@@ -52,11 +52,11 @@ static class ApLook
         var pixels = IconPixels();
         for (int i = 0; i < pixels.Length; i++) changed |= Set8(m, icon + (uint)i, pixels[i]);
 
-        // Loot-style colours: grey filler, blue useful, purple progression, red trap (ItemClass).
-        WritePalette(m, TrapPalette, 0xE0, 0x50, 0x48);
-        WritePalette(m, ProgressionPalette, 0xAF, 0x99, 0xEF);
-        WritePalette(m, UsefulPalette, 0x6D, 0x8B, 0xE8);
+        // Four clearly different hues (ItemClass): gold progression, blue useful, grey filler, red trap.
+        WritePalette(m, ProgressionPalette, 0xF0, 0xB0, 0x20);
+        WritePalette(m, UsefulPalette, 0x3C, 0x78, 0xF0);
         WritePalette(m, FillerPalette, 0x8C, 0x8C, 0x8C);
+        WritePalette(m, TrapPalette, 0xE0, 0x40, 0x40);
 
         if (!changed && !_palettesChanged) return;
         _palettesChanged = false;

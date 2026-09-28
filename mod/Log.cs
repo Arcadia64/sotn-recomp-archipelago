@@ -42,16 +42,16 @@ static class Log
     }
 }
 
-// Loot-style item colours, matching the in-game AP badge (ApLook): filler grey, useful blue,
-// progression purple (Archipelago's plum), trap red.
+// Item colours, matching the in-game AP badge (ApLook): gold progression, blue useful, grey
+// filler, red trap. Archipelago's own plum/slate blue/cyan were too close on a small badge.
 static class ItemClass
 {
     public static string Name(NetworkItem item) =>
         item.Progression ? "Progression" : item.Trap ? "Trap" : item.Useful ? "Useful" : "Filler";
 
     public static Vector4 Colour(NetworkItem item) =>
-        item.Progression ? Rgb(0xAF, 0x99, 0xEF) : item.Trap ? Rgb(0xE0, 0x50, 0x48)
-        : item.Useful ? Rgb(0x6D, 0x8B, 0xE8) : Rgb(0xB4, 0xB4, 0xB4);
+        item.Progression ? Rgb(0xF0, 0xB0, 0x20) : item.Trap ? Rgb(0xE0, 0x40, 0x40)
+        : item.Useful ? Rgb(0x5A, 0x8C, 0xF5) : Rgb(0xB4, 0xB4, 0xB4);
 
     static Vector4 Rgb(int r, int g, int b) => new(r / 255f, g / 255f, b / 255f, 1f);
 }
