@@ -66,8 +66,9 @@ def decode_tokens(data):
 
 
 def main():
-    zip_path = sys.argv[1] if len(sys.argv) > 1 else max(glob.glob(os.path.join(AP_DIR, "output", "AP_*.zip")), key=os.path.getmtime)
-    slot = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    zip_path = args[0] if args else max(glob.glob(os.path.join(AP_DIR, "output", "AP_*.zip")), key=os.path.getmtime)
+    slot = int(args[1]) if len(args) > 1 else 1
     scouts, tokens, patch_name = load_seed(zip_path, slot)
     print(f"seed {os.path.basename(zip_path)}, slot {slot}: {len(scouts)} locations, patch {patch_name}")
 
@@ -99,8 +100,8 @@ def main():
     unsupported = {loc: why for loc, why in result["unsupported"]}
     mismatches = []
     produced = set()
-    for loc, stage, addr, value in result["writes"]:
-        for i, b in enumerate(value.to_bytes(2, "little")):
+    for loc, stage, addr, value, size in result["writes"]:
+        for i, b in enumerate(value.to_bytes(size, "little")):
             key = (stage, addr + i)
             produced.add(key)
             if expected.get(key) != b:
@@ -115,6 +116,24 @@ def main():
             key = (stage, addr + i)
             if key in expected and key not in produced:
                 missing.append(f"loc {loc}: stage 0x{stage:02X} 0x{addr + i:08X} patch=0x{expected[key]:02X} not written by the mod")
+
+    if "--other" in sys.argv:
+        # Patch bytes in stage files that no placement write explains: option or always-on patches
+        # (accessibility fixes, dialog skips...) to review separately.
+        other = sorted(k for k in expected if k not in produced)
+        runs, start, prev = [], None, None
+        for stage, addr in other:
+            if start and stage == start[0] and addr == prev[1] + 1:
+                prev = (stage, addr)
+                continue
+            if start:
+                runs.append((start, prev))
+            start = prev = (stage, addr)
+        if start:
+            runs.append((start, prev))
+        print(f"patch bytes not written by the mod: {len(other)} in {len(runs)} runs")
+        for (st, a), (_, b) in runs:
+            print(f"  stage 0x{st:02X} 0x{a:08X}-0x{b:08X} ({b - a + 1} bytes)")
 
     print(f"mod: {len(result['writes'])} writes, {len(unsupported)} unsupported locations")
     for loc, why in sorted(unsupported.items()):

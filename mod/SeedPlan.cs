@@ -11,17 +11,6 @@ namespace SotnArchipelago;
 // stage-load hook that writes it into RAM.
 static class SeedPlan
 {
-    // Item ids inside wall code the recomp didn't rewrite (config/sotn.json has no patch for these
-    // functions), so writing RAM there changes nothing: NO1 func_us_801BE880, RNO1 func_801A7B34,
-    // RNO3 func_801B2BF0. Spots that need one of these are treated as not placed. The NO3/NP3
-    // rocks, CEN Holy glasses and RNZ1 Ring of Vlad ids are read back from RAM by RandoPatch.cs.
-    static readonly HashSet<StageAddr> NotReadByRecomp =
-    [
-        new(0x01, 0x801BEAB0),
-        new(0x21, 0x801A7D64),
-        new(0x27, 0x801B2F04),
-    ];
-
     static int _builtFor = -1;
     static readonly Dictionary<int, List<RamWrite>> _byStage = [];
     static readonly HashSet<long> _unsupported = [];
@@ -46,8 +35,6 @@ static class SeedPlan
         {
             if (!ApClient.TryGetScout(loc.Id, out var scout)) continue;
             var result = Placement.Compute(loc, scout, slot);
-            if (result.Unsupported == null && result.Writes.Exists(w => NotReadByRecomp.Contains(new(w.Stage, w.Addr))))
-                result.Unsupported = "wall item is fixed in code the recomp didn't rewrite";
             if (result.Unsupported == null)
             {
                 foreach (var w in result.Writes) Add(w);
@@ -96,7 +83,11 @@ static class SeedPlan
 
         int stage = m.ReadU8(Game.StageIdAddr);
         if (!_byStage.TryGetValue(stage, out var list)) return;
-        foreach (var w in list) m.WriteU16(w.Addr, w.Value);
+        foreach (var w in list)
+        {
+            if (w.Size == 1) m.WriteU8(w.Addr, (byte)w.Value);
+            else m.WriteU16(w.Addr, w.Value);
+        }
         Log.Info($"{why}: placed {list.Count} write(s) in {(Stage)stage} (0x{stage:X2})");
     }
 }

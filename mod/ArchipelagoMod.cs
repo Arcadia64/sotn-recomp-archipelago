@@ -43,6 +43,7 @@ public sealed class ArchipelagoMod : IMod
         ItemGiver.Tick(e.Memory, e.Frame);
         while (ApClient.TryDequeueDeath(out var cause)) GameRules.OnDeathLink(cause);
         GameRules.Tick(e.Memory, e.Frame);
+        Fixes.Tick(e.Memory);
 
         while (ApClient.TryDequeueToast(out var toast))
             ToastNotifications.ShowText(toast.Title, toast.Message);

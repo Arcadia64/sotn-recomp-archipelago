@@ -7,7 +7,7 @@ using SotnArchipelago;
 
 // Usage: placement-check <scouts.json> <out.json>
 // scouts.json: {"slot": 1, "scouts": [[location, item, player, flags], ...]}
-// out.json: {"writes": [[location, stage, addr, value], ...], "unsupported": [[location, reason], ...],
+// out.json: {"writes": [[location, stage, addr, value, size], ...], "unsupported": [[location, reason], ...],
 //            "universe": [[location, stage, addr], ...]}   (every address a location's placement can touch)
 var input = JsonNode.Parse(File.ReadAllText(args[0]))!;
 int slot = input["slot"]!.GetValue<int>();
@@ -24,7 +24,7 @@ foreach (var node in input["scouts"]!.AsArray())
     if (loc == null) { unsupported.Add(new JsonArray(scout.Location, "not in LocationData")); continue; }
 
     var result = Placement.Compute(loc, scout, slot);
-    foreach (var w in result.Writes) writes.Add(new JsonArray(loc.Id, w.Stage, w.Addr, w.Value));
+    foreach (var w in result.Writes) writes.Add(new JsonArray(loc.Id, w.Stage, w.Addr, w.Value, w.Size));
     if (result.Unsupported != null) unsupported.Add(new JsonArray(loc.Id, result.Unsupported));
 
     var p = loc.Place;
@@ -37,7 +37,7 @@ foreach (var node in input["scouts"]!.AsArray())
     foreach (var e in p.Entities)
         foreach (uint off in new uint[] { 0, 2, 4, 8 }) Add(new StageAddr(e.Stage, e.Addr + off));
 }
-foreach (var w in Placement.Always) writes.Add(new JsonArray(-1, w.Stage, w.Addr, w.Value));
+foreach (var w in Placement.Always) writes.Add(new JsonArray(-1, w.Stage, w.Addr, w.Value, w.Size));
 
 var output = new JsonObject { ["writes"] = writes, ["unsupported"] = unsupported, ["universe"] = universe };
 File.WriteAllText(args[1], output.ToJsonString());

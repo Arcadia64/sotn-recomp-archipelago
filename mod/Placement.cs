@@ -3,7 +3,8 @@ using System.Collections.Generic;
 
 namespace SotnArchipelago;
 
-public readonly record struct RamWrite(int Stage, uint Addr, ushort Value);
+// Size is 2 (u16) or 1 (byte). 32-bit values are written as two u16 halves.
+public readonly record struct RamWrite(int Stage, uint Addr, ushort Value, byte Size = 2);
 
 // Works out the RAM writes that put a location's item in the game. A straight port of the
 // per-location part of the AP world's Rom.py write_tokens (b08161, lines 800-1013), writing
@@ -54,7 +55,11 @@ public static class Placement
         {
             if (item.Type == ItemType.Relic)
             {
-                if (vanilla == "Jewel of open") { r.Unsupported = "relic in the Librarian's Jewel of Open slot"; return; }
+                if (vanilla == "Jewel of open")
+                {
+                    Special.ShopRelicWithRelic(r, p, id);
+                    return;
+                }
                 if (vanilla is "Bat card" or "Skill of wolf")
                 {
                     Put(r, p.Addresses, id);
@@ -69,11 +74,9 @@ public static class Placement
                 return;
             }
 
-            if (vanilla == "Jewel of open" || VladRelics.Contains(vanilla))
-            {
-                r.Unsupported = $"item in place of {vanilla}";
-                return;
-            }
+            if (vanilla == "Jewel of open") { r.Unsupported = $"item in place of {vanilla}"; return; }
+            if (vanilla == "Ring of vlad") { Special.RingOfVladWithItem(r, loc, item); return; }
+            if (VladRelics.Contains(vanilla)) { Special.BossRelicWithItem(r, loc, item, Special.VladEntry[vanilla]); return; }
             RelicSpotAsItem(r, p, id);
             return;
         }
@@ -88,18 +91,23 @@ public static class Placement
 
         if (vanilla == "Holy glasses")
         {
-            if (item.Type == ItemType.Relic) { r.Unsupported = "relic in place of Holy glasses"; return; }
-            Put(r, p.Addresses, (ushort)item.Id);
+            if (item.Type == ItemType.Relic) Special.HolyGlassesWithRelic(r, loc, id);
+            else Put(r, p.Addresses, (ushort)item.Id);
             return;
         }
 
-        if (p.Trio) { r.Unsupported = "Trio reward"; return; }
+        if (p.Trio)
+        {
+            if (item.Type == ItemType.Relic) Special.TrioWithRelic(r, p, id);
+            else Special.TrioWithItem(r, loc, item);
+            return;
+        }
 
         if (p.Index >= 0)
         {
             if (vanilla == "Gold ring")
             {
-                if (item.Type == ItemType.Relic) { r.Unsupported = "relic in place of Gold ring"; return; }
+                if (item.Type == ItemType.Relic) { Special.GoldRingWithRelic(r, p, id); return; }
                 Put(r, p.Addresses, id);
                 return;
             }
@@ -119,13 +127,12 @@ public static class Placement
         ushort boots = (ushort)(ItemData.SecretBoots + TileIdOffset);
         string vanilla = loc.VanillaItem;
 
+        var bootsItem = ItemData.Get(ItemData.SecretBoots)!;
         if (loc.IsRelicSpot)
         {
-            if (vanilla == "Jewel of open" || VladRelics.Contains(vanilla))
-            {
-                r.Unsupported = $"other player's item in place of {vanilla}";
-                return;
-            }
+            if (vanilla == "Jewel of open") { r.Unsupported = $"other player's item in place of {vanilla}"; return; }
+            if (vanilla == "Ring of vlad") { Special.RingOfVladWithItem(r, loc, bootsItem); return; }
+            if (VladRelics.Contains(vanilla)) { Special.BossRelicWithItem(r, loc, bootsItem, Special.VladEntry[vanilla]); return; }
             RelicSpotAsItem(r, p, bag);
             return;
         }
@@ -136,7 +143,7 @@ public static class Placement
             return;
         }
 
-        if (p.Trio) { r.Unsupported = "Trio reward"; return; }
+        if (p.Trio) { Special.TrioWithItem(r, loc, bootsItem); return; }
 
         if (p.Index >= 0)
         {

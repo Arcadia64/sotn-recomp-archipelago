@@ -13,6 +13,8 @@
     <Compile Include="../../mod/LocationData.g.cs" />
     <Compile Include="../../mod/ItemData.g.cs" />
     <Compile Include="../../mod/Placement.cs" />
+    <Compile Include="../../mod/PlacementSpecial.cs" />
+    <Compile Include="../../mod/SpecialData.g.cs" />
     <Compile Include="../../mod/NetworkItem.cs" />
   </ItemGroup>
 </Project>
