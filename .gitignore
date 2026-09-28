@@ -1,0 +1,11 @@
+# Third-party checkouts, the Archipelago test install and game disc images live here. Never commit.
+ref/
+
+# Build output and caches
+bin/
+obj/
+__pycache__/
+*.pyc
+
+# Logs
+*.log

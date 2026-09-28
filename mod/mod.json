@@ -1,0 +1,8 @@
+{
+  "id": "archipelago",
+  "name": "Archipelago",
+  "version": "0.0.1",
+  "author": "",
+  "description": "Archipelago multiworld client for SotN. Work in progress: currently watches game flags only.",
+  "dependencies": []
+}
