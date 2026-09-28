@@ -39,6 +39,9 @@ public static class Placement
     {
         public readonly List<RamWrite> Writes = [];
         public string? Unsupported;
+        // Set where the mod places the item differently from the AP patch on purpose (the checker
+        // doesn't compare these bytes).
+        public string? DiffersFromPatch;
     }
 
     // Always applied, whatever the seed: the Librarian sells Jewel of Open for 10 gold (Rom.py 1016).
@@ -86,7 +89,7 @@ public static class Placement
                 return;
             }
 
-            if (vanilla == "Jewel of open") { r.Unsupported = $"item in place of {vanilla}"; return; }
+            if (vanilla == "Jewel of open") { Special.ShopEntryWithItem(r, item); return; }
             if (vanilla == "Ring of vlad") { Special.RingOfVladWithItem(r, loc, item); return; }
             if (VladRelics.Contains(vanilla)) { Special.BossRelicWithItem(r, loc, item, Special.VladEntry[vanilla]); return; }
             RelicSpotAsItem(r, p, id);
@@ -145,7 +148,7 @@ public static class Placement
         var bootsItem = ap ? Placeholder : ItemData.Get(ItemData.SecretBoots)!;
         if (loc.IsRelicSpot)
         {
-            if (vanilla == "Jewel of open") { r.Unsupported = $"other player's item in place of {vanilla}"; return; }
+            if (vanilla == "Jewel of open") { Special.ShopEntryWithItem(r, ap ? Placeholder : bootsItem); return; }
             if (vanilla == "Ring of vlad") { Special.RingOfVladWithItem(r, loc, bootsItem); return; }
             if (VladRelics.Contains(vanilla)) { Special.BossRelicWithItem(r, loc, bootsItem, Special.VladEntry[vanilla]); return; }
             RelicSpotAsItem(r, p, bag);

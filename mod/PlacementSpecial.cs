@@ -218,6 +218,28 @@ static class Special
         for (int i = 0; i < 16; i++) W8(r, at.Stage, at.Addr + (uint)i, bytes[i]);
     }
 
+    // The Librarian's first shop entry (Jewel of Open in vanilla) as a normal item entry: type,
+    // availability 0 (always), item id. The shop's own code then lists, previews and sells it like any
+    // other item; ApLook turns a purchase of it into the check. Rom.py instead keeps a relic-style
+    // entry and edits 14 instructions and injects routines (replace_shop_relic_with_item), which the
+    // recomp can't run and which overwrite the relic-owned offset its rewrite reads (0x801B2B08).
+    // Stock: always available, like the AP patch ("so the item is always on shop"), at 10 gold.
+    const uint ShopEntry0 = 0x8018134C;   // u8 type, u8 availability, u16 id, u32 price
+    const int LibraryStage = 0x02;
+
+    public static void ShopEntryWithItem(Placement.Result r, ItemInfo item)
+    {
+        int type = item.Type switch
+        {
+            ItemType.Helmet => 1, ItemType.Armor => 2, ItemType.Cloak => 3, ItemType.Accessory => 4, _ => 0,
+        };
+        int id = type == 0 ? (int)item.Id : (int)item.Id - 169; // hand id, or body index
+        W8(r, LibraryStage, ShopEntry0 + 0, type);
+        W8(r, LibraryStage, ShopEntry0 + 1, 0x00);
+        W16(r, LibraryStage, ShopEntry0 + 2, id);
+        r.DiffersFromPatch = "sold as a normal shop entry instead of Rom.py's relic-slot code patch";
+    }
+
     // ---- helpers ----
 
     static (int Stage, int Items, int Rewards) ZoneFor(int stage)
