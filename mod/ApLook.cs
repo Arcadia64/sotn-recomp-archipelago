@@ -37,17 +37,43 @@ static class ApLook
 
     // ---- icon and palettes ----
 
+    // LoadEquipIcon keeps, per icon slot (32), the icon and palette ids it last uploaded, and skips
+    // the upload when they match. 0xFFFF matches nothing, so the next load re-uploads.
+    const uint LiveIconIds = 0x801374F8, LivePaletteIds = 0x80137538;
+    const int IconSlots = 32;
+
     // Written on every stage load (DRA data, read only by LoadEquipIcon), before any pickup loads it.
+    // If the data in RAM was different (first time, or a mod update changed the art), the slot caches
+    // are cleared so pickups already cached with the old art get the new one.
     public static void WriteArt(IMemory m)
     {
+        bool changed = false;
         uint icon = IconsAddr + ApIcon * 0x80u;
         var pixels = IconPixels();
-        for (int i = 0; i < pixels.Length; i++) m.WriteU8(icon + (uint)i, pixels[i]);
+        for (int i = 0; i < pixels.Length; i++) changed |= Set8(m, icon + (uint)i, pixels[i]);
 
-        WritePalette(m, TrapPalette, 0xFA, 0x80, 0x72);        // AP "salmon"
-        WritePalette(m, ProgressionPalette, 0xAF, 0x99, 0xEF); // AP "plum"
-        WritePalette(m, UsefulPalette, 0x6D, 0x8B, 0xE8);      // AP "slate blue"
-        WritePalette(m, FillerPalette, 0x00, 0xEE, 0xEE);      // AP "cyan"
+        // Loot-style colours: grey filler, blue useful, purple progression, red trap (ItemClass).
+        WritePalette(m, TrapPalette, 0xE0, 0x50, 0x48);
+        WritePalette(m, ProgressionPalette, 0xAF, 0x99, 0xEF);
+        WritePalette(m, UsefulPalette, 0x6D, 0x8B, 0xE8);
+        WritePalette(m, FillerPalette, 0x8C, 0x8C, 0x8C);
+
+        if (!changed && !_palettesChanged) return;
+        _palettesChanged = false;
+        for (int slot = 0; slot < IconSlots; slot++)
+        {
+            m.WriteU16(LiveIconIds + (uint)slot * 2, 0xFFFF);
+            m.WriteU16(LivePaletteIds + (uint)slot * 2, 0xFFFF);
+        }
+    }
+
+    static bool _palettesChanged;
+
+    static bool Set8(IMemory m, uint addr, byte value)
+    {
+        if (m.ReadU8(addr) == value) return false;
+        m.WriteU8(addr, value);
+        return true;
     }
 
     // 16x16, index per pixel: a round badge with "AP" on it. Only texels 1..14 are drawn.
@@ -99,7 +125,13 @@ static class ApLook
             Bgr(0xFF, 0xFF, 0xFF),                   // letters
             Bgr(0x18, 0x18, 0x30),                   // letter shadow
         ];
-        for (int i = 0; i < 16; i++) m.WriteU16(at + (uint)i * 2, i < colours.Length ? colours[i] : (ushort)0);
+        for (int i = 0; i < 16; i++)
+        {
+            ushort value = i < colours.Length ? colours[i] : (ushort)0;
+            if (m.ReadU16(at + (uint)i * 2) == value) continue;
+            m.WriteU16(at + (uint)i * 2, value);
+            _palettesChanged = true;
+        }
     }
 
     static int Mix(int from, int to, int percent) => from + (to - from) * percent / 100;
