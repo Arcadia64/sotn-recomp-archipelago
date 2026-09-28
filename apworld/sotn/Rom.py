@@ -194,6 +194,14 @@ def rom_offset(zone: dict, address: int) -> int:
     return zone["pos"] + address + math.floor(address / 0x800) * 0x130
 
 
+def disc_advance(offset: int, delta: int) -> int:
+    """Move a raw disc offset forward by delta bytes of file data, skipping each sector's EDC/ECC and
+    the next sector's header (2352-byte sectors, 24-byte header, 0x800 bytes of data)."""
+    within = offset % 2352 - 24 + delta
+    sectors, within = divmod(within, 0x800)
+    return (offset // 2352 + sectors) * 2352 + 24 + within
+
+
 def item_slots(item: dict) -> list:
     if item["type"] in ["WEAPON1", "WEAPON2", "SHIELD", "USABLE"]:
         return [slots[SLOT["LEFT_HAND"]], slots[SLOT["RIGHT_HAND"]]]
@@ -1401,7 +1409,9 @@ def write_tokens(world: "SotnWorld", patch: SotnProcedurePatch):
         drop_mod = options_dict["drop_mod"]
 
     if drop_mod != 0:
-        modify_drop(options_dict["drop_mod"], patch)
+        # Upstream passed options_dict["drop_mod"] here, which is 0 for easy difficulty with drop_mod
+        # left at normal: every drop rate became 0 instead of the easy-difficulty drop boost.
+        modify_drop(drop_mod, patch)
 
     player_name = world.multiworld.get_player_name(world.player)
     player_num = world.player
@@ -2090,139 +2100,139 @@ def modify_drop(drop_mod: int, patch: SotnProcedurePatch):
         # Patch drops to always be items
         offset = 0x440413c  # Colosseum
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))  # Removes failures
-        offset += 0x1c
+        offset = disc_advance(offset, 0x1c)
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))  # Removes second roll failures
-        offset += 0x10
+        offset = disc_advance(offset, 0x10)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))  # Forces an item drop
 
         offset = 0x44d514c  # Catacombs
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x460c4bc  # Abandoned Mine
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x46c78f0  # Royal Chapel
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x47eb5d8  # Long Library
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4948630  # Marble Gallery
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4a1e258  # Outer Wall
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4ae259c  # Olrox's Quarters
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4bb2de4  # Entrance(2nd)
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4c871b8  # Underground Caverns
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4d36fa8  # Floating Catacombs
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4dc486c  # Cave
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4e6ea24  # Anti-Chapel
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4f0b388  # Forbidden Library
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x4fc540c  # Black Marble Gallery
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x50808a4  # Reverse Outer Wall
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x5137bc8  # Death Wing's Lair
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x51e95a8  # Reverse Entrance
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x52c0e2c  # Reverse Caverns
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x5437344  # Entrance(1st)
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x54f3cdc  # Alchemy Laboratory
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x55a6968  # Clock Tower
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x5643ce8  # Castle Keep
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x577e4b8  # Reverse Colosseum
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x580836c  # Reverse Keep
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x5936c4c  # Necromancy Laboratory
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         offset = 0x59efe78  # Reverse Clock Tower
         patch.write_token(APTokenTypes.WRITE, offset, nop_line.to_bytes(4, "little"))
-        offset += 0x2c
+        offset = disc_advance(offset, 0x2c)
         patch.write_token(APTokenTypes.WRITE, offset, always_drop.to_bytes(4, "little"))
 
         # Alternate between Rare and Uncommon Drops based on Kill Count - MottZilla
@@ -2277,12 +2287,13 @@ def start_room_rando(castle_flag: int, world: "SotnWorld", patch: SotnProcedureP
     rand_room_key = world.random.choice(room_keys)
     rand_room = start_room_data[rand_room_key]
 
+    # Second castle stage ids start at 0x20 (upstream compared with decimal 20; same result for this data).
     if castle_flag == 1:  # 1st castle only
-        while rand_room["stage"] >= 20:
+        while rand_room["stage"] >= 0x20:
             rand_room_key = world.random.choice(room_keys)
             rand_room = start_room_data[rand_room_key]
     elif castle_flag == 2:  # 2nd castle only
-        while rand_room["stage"] <= 20:
+        while rand_room["stage"] < 0x20:
             rand_room_key = world.random.choice(room_keys)
             rand_room = start_room_data[rand_room_key]
 
@@ -2609,7 +2620,8 @@ def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch
             two_chars_str = '0x' + disclosure_card[i:i+2]
             two_chars = int(two_chars_str, 16)
             patch.write_token(APTokenTypes.WRITE, offset, struct.pack("<B", two_chars))
-            offset += 1
+            # Upstream used offset += 1, which ran one text past a DRA sector end into its EDC bytes.
+            offset = disc_advance(offset, 1)
         patch.write_token(APTokenTypes.WRITE, enemy["nameOffset"], enemy["newNameReference"].to_bytes(4, "little"))
 
     if enemy_stat:
@@ -2620,7 +2632,7 @@ def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch
             two_chars_str = '0x' + normal_names[i:i+2]
             two_chars = int(two_chars_str, 16)
             patch.write_token(APTokenTypes.WRITE, offset, struct.pack("<B", two_chars))
-            offset += 1
+            offset = disc_advance(offset, 1)
 
         offset = 0x0b9ca8
         patch.write_token(APTokenTypes.WRITE, offset, (0x800e0cf4).to_bytes(4, "little"))
@@ -3286,6 +3298,11 @@ def surprise_patches(patch: SotnProcedurePatch):
             offset += 0x10
 
 
+# Progression items randomize_drop must not hand out, spelled as io_items spells them (upstream's
+# "Spike breaker" / "Silver ring" / "Gold ring" never matched, so those three could drop).
+PROGRESSION_DROP_NAMES = ["Spike Breaker", "Holy glasses", "Silver Ring", "Gold Ring"]
+
+
 def randomize_drop(option: int, world: "SotnWorld", patch: SotnProcedurePatch):
     items = tile_filter(io_items, ["enemy"])
     dropped_items = []
@@ -3325,7 +3342,7 @@ def randomize_drop(option: int, world: "SotnWorld", patch: SotnProcedurePatch):
                 while True:
                     rng_type_drop = world.random.choice(type_drops)
                     if exclude_progression:
-                        if rng_type_drop["name"] not in ["Spike breaker", "Holy glasses", "Silver ring", "Gold ring"]:
+                        if rng_type_drop["name"] not in PROGRESSION_DROP_NAMES:
                             break
                     else:
                         break
@@ -3353,7 +3370,7 @@ def randomize_drop(option: int, world: "SotnWorld", patch: SotnProcedurePatch):
             while True:
                 new_drop = world.random.choice(possible_drops)
                 if exclude_progression:
-                    if new_drop not in ["Spike breaker", "Holy glasses", "Silver ring", "Gold ring"]:
+                    if new_drop not in PROGRESSION_DROP_NAMES:
                         break
                     continue
                 break

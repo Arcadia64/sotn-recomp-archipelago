@@ -12,6 +12,8 @@ from .Regions import create_regions, create_regions_no_logic
 from .Rules import set_rules, set_no_logic_rules
 from .Options import SOTNOptions, sotn_option_groups
 from .Rom import SotnProcedurePatch, write_tokens
+from .Recomp import recomp_payload
+from .Groups import ITEM_GROUPS, LOCATION_GROUPS
 from .client import SotNClient
 #from .test_client import SotNTestClient
 
@@ -54,6 +56,9 @@ class SotnWeb(WebWorld):
     option_groups = sotn_option_groups
 
 
+EXTRA_ADD = ["Duplicator", "Crissaegrim", "Ring of varda", "Mablung sword", "Masamune", "Marsil", "Yasutsuna"]
+
+
 class SotnWorld(World):
     """
     Symphony of the Night is a metroidvania developed by Konami
@@ -67,7 +72,11 @@ class SotnWorld(World):
     options: SOTNOptions
     data_version: ClassVar[int] = 1
     required_client_version: Tuple[int, int, int] = (0, 4, 5)
-    extra_add = ["Duplicator", "Crissaegrim", "Ring of varda", "Mablung sword", "Masamune", "Marsil", "Yasutsuna"]
+    extra_add: List[str]
+    sotn_patch: SotnProcedurePatch
+
+    item_name_groups = ITEM_GROUPS
+    location_name_groups = LOCATION_GROUPS
 
     item_name_to_id: ClassVar[Dict[str, int]] = {name: data["id"] for name, data in items.items()}
     location_name_to_id: ClassVar[Dict[str, int]] = {name: data["ap_id"] for name, data in locations.items()}
@@ -80,23 +89,23 @@ class SotnWorld(World):
         pass
 
     def generate_early(self) -> None:
-        pass
+        # Per world: upstream kept this as a class list and popped from it, so a second SotN slot
+        # (or the next generation in the same process) got fewer powerful items.
+        self.extra_add = list(EXTRA_ADD)
 
     def create_item(self, name: str) -> Item:
         data = items[name]
-        return SotnItem(name, data["classification"], data["id"], self.player)
+        classification = data["classification"]
+        # Upstream changed the shared item table, making Faerie scroll progression for every SotN slot.
+        if name == "Faerie scroll" and self.options.enemysanity.value and self.options.enemy_scroll.value:
+            classification = ItemClassification.progression
+        return SotnItem(name, classification, data["id"], self.player)
 
     def create_items(self) -> None:
         added_items = 1  # "Reverse Center Cube - Kill Dracula"
         itempool: typing.List[SotnItem] = []
         active_locations = self.multiworld.get_unfilled_locations(self.player)
         total_location = len(active_locations)
-
-        enemysanity = self.options.enemysanity.value
-        fs_enemysanity = self.options.enemy_scroll.value
-
-        if enemysanity and fs_enemysanity:
-            items["Faerie scroll"]["classification"] = ItemClassification.progression
 
         loc = self.multiworld.get_location("Reverse Center Cube - Kill Dracula", self.player)
         loc.place_locked_item(self.create_event("Victory"))
@@ -189,7 +198,7 @@ class SotnWorld(World):
 
     def create_random_junk(self) -> SotnItem:
         junk_list = ["Orange", "Apple", "Banana", "Grapes", "Strawberry", "Pineapple", "Peanuts", "Toadstool"]
-        rng_junk = self.multiworld.random.choice(junk_list)
+        rng_junk = self.random.choice(junk_list)
         data = items[rng_junk]
         return SotnItem(rng_junk, data["classification"], data["id"], self.player)
 
@@ -208,16 +217,20 @@ class SotnWorld(World):
         else:
             set_rules(self.multiworld, self.player, self.options)
 
+    def post_fill(self) -> None:
+        # Build the patch once, here, so the BizHawk patch file and the recomp mod's slot data come
+        # from the same random rolls: generate_output and fill_slot_data run at the same time.
+        self.sotn_patch = SotnProcedurePatch(player=self.player, player_name=self.player_name)
+        write_tokens(self, self.sotn_patch)
+
     def fill_slot_data(self) -> Dict[str, Any]:
         option_names: List[str] = [option_name for option_name in self.options_dataclass.type_hints
                                    if option_name != "plando_items"]
         slot_data = self.options.as_dict(*option_names)
+        # The patch's writes for the SymphonyRecomp mod, which applies them to RAM as files load.
+        slot_data["recomp"] = recomp_payload(self.sotn_patch)
         return slot_data
 
     def generate_output(self, output_directory: str) -> None:
-        patch = SotnProcedurePatch(player=self.player, player_name=self.player_name)
-
-        write_tokens(self, patch)
-
         out_file_name = self.multiworld.get_out_file_name_base(self.player)
-        patch.write(os.path.join(output_directory, f"{out_file_name}{patch.patch_file_ending}"))
+        self.sotn_patch.write(os.path.join(output_directory, f"{out_file_name}{self.sotn_patch.patch_file_ending}"))

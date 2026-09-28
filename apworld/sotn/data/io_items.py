@@ -9515,7 +9515,9 @@ def tile_filter(items: list, filters: list) -> list:
                 if any(f in tile for f in filters):
                     temp_tiles.append(tile)
         if len(temp_tiles):
-            new_item = item
+            # Copy: upstream changed the shared io_items entry, so after randomize_drop filtered it,
+            # randomize_candles saw only a fraction of the candles (and a second SotN slot too).
+            new_item = dict(item)
             new_item["tiles"] = temp_tiles
             return_list.append(new_item)
 

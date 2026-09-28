@@ -1,4 +1,4 @@
-CURRENT_VERSION = 816
+CURRENT_VERSION = 817
 
 # This is applied to helmet, armor, cloak, and other ids that are sold in
 # the librarian's shop menu or are in an equipment slot
@@ -85,23 +85,25 @@ shop_item_data = {
         "itemPriceD": 2400,
         "priceAddress": 0x047a3100,
     },
+    # 14-16: upstream had each one a shop slot early (14 reused Shuriken's price address), checked
+    # against the Librarian's table on the disc (LIB 0x8018134C, 8 bytes per entry).
     14: {
         "itemName": "Cross shuriken",
-        "itemPriceH": 0x00001388,
-        "itemPriceD": 2400,
-        "priceAddress": 0x047a3100,
-    },
-    15: {
-        "itemName": "Buffalo star",
         "itemPriceH": 0x00001388,
         "itemPriceD": 5000,
         "priceAddress": 0x047a3108,
     },
-    16: {
-        "itemName": "Flame star",
+    15: {
+        "itemName": "Buffalo star",
         "itemPriceH": 0x00001f40,
         "itemPriceD": 8000,
         "priceAddress": 0x047a3110,
+    },
+    16: {
+        "itemName": "Flame star",
+        "itemPriceH": 0x00003a98,
+        "itemPriceD": 15000,
+        "priceAddress": 0x047a3118,
     },
     17: {
         "itemName": "Library card",
