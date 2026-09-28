@@ -1857,6 +1857,11 @@ def randomize_music(world: "SotnWorld", patch: SotnProcedurePatch):
 
 
 def rlib_card(patch: SotnProcedurePatch):
+    # Down-arrow at the end of the Library card's name (DRA 0x800DD20C, vanilla FF 00), as sotn.io's
+    # applyRLBCPatches writes it: shows the card has the reverse-library function, and it is the marker
+    # SymphonyRecomp checks to switch its own reverse Library card on.
+    patch.write_token(APTokenTypes.WRITE, 0xf1e14, (0xffe6).to_bytes(2, "little"))
+
     # Patch the reverse library card function
     offset = 0x12b534  # Hook to our new LBC function
     patch.write_token(APTokenTypes.WRITE, offset, (0x0c02622f).to_bytes(4, "little"))

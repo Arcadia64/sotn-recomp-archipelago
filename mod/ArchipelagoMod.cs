@@ -49,6 +49,7 @@ public sealed class ArchipelagoMod : IMod
         while (ApClient.TryDequeueDeath(out var cause)) GameRules.OnDeathLink(cause);
         GameRules.Tick(e.Memory, e.Frame);
         Fixes.Tick(e.Memory);
+        SeedPlan.ApplyResidentFiles(e.Memory);
 
         while (ApClient.TryDequeueToast(out var toast))
             ToastNotifications.ShowText(toast.Title, toast.Message);

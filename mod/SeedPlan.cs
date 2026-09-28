@@ -37,14 +37,28 @@ static class SeedPlan
         (0x801B4F10, 0x801B4F13), (0x801B4FB4, 0x801B4FB7), (0x801B59F4, 0x801B59F7), (0x801D4600, 0x801D4727),
     ];
 
+    // Stage files that aren't AP zones (Recomp.py OTHER_FILES).
+    static readonly Dictionary<string, int> ExtraStageKeys = new() { ["MAR"] = 0x17 }; // Clock Room cutscene
+    const int GraphicsChunk = 0x2000;
+
     static int _builtFor = -1;
     static bool _fromPayload;
+    static readonly Dictionary<string, Dictionary<int, List<(int Offset, byte Value)>>> _graphics = [];
+    static readonly Dictionary<uint, byte> _richter = [];
+    static readonly List<RamWrite> _sel = [];
     static readonly Dictionary<int, List<RamWrite>> _byStage = [];
     static readonly HashSet<long> _unsupported = [];
     static readonly Dictionary<int, long> _byPickupFlag = [];
     static readonly Dictionary<int, List<long>> _directDrops = [];
 
     public static bool Ready => _builtFor >= 0 && _builtFor == ApClient.ConnectionId;
+
+    // F_GAME / F_GAME2 patch bytes by 0x2000-byte chunk, or null.
+    public static Dictionary<int, List<(int Offset, byte Value)>>? GraphicsBytes(string file) =>
+        Ready && _graphics.TryGetValue(file, out var chunks) ? chunks : null;
+
+    // RIC.BIN patch bytes by file offset.
+    public static IReadOnlyDictionary<uint, byte> RichterOverlayBytes => _richter;
     public static bool FromPayload => _fromPayload;
     public static int UnsupportedCount => _unsupported.Count;
 
@@ -72,6 +86,9 @@ static class SeedPlan
         _unsupported.Clear();
         _byPickupFlag.Clear();
         _directDrops.Clear();
+        _graphics.Clear();
+        _richter.Clear();
+        _sel.Clear();
         ApLook.Reset();
         int slot = ApClient.Slot;
 
@@ -130,27 +147,61 @@ static class SeedPlan
         int bytes = 0, skipped = 0;
         foreach (var (key, runs) in files)
         {
+            if (key is "F_GAME" or "F_GAME2")
+            {
+                // Streamed to VRAM in 0x2000-byte chunks; OptionHooks patches each chunk as it goes.
+                var chunks = new Dictionary<int, List<(int Offset, byte Value)>>();
+                foreach (var (offset, value) in Bytes(runs))
+                {
+                    int chunk = offset / GraphicsChunk;
+                    if (!chunks.TryGetValue(chunk, out var list)) chunks[chunk] = list = [];
+                    list.Add((offset, value));
+                    bytes++;
+                }
+                _graphics[key] = chunks;
+                continue;
+            }
+            if (key == "RIC")
+            {
+                // Richter's overlay: only Hydro Storm colour immediates, applied by OptionHooks.
+                foreach (var (offset, value) in Bytes(runs)) { _richter[(uint)offset] = value; bytes++; }
+                continue;
+            }
+            if (key == "SEL")
+            {
+                // Title / file select / ending overlay: written once it has loaded (ApplyResidentFiles).
+                foreach (var (offset, value) in Bytes(runs)) { _sel.Add(new RamWrite(-1, OverlayBase + (uint)offset, value, 1)); bytes++; }
+                continue;
+            }
+
             int stage;
             uint baseAddr;
             if (key == "DRA") { stage = DraStage; baseAddr = DraBase; }
             else if (SpecialData.Zones.TryGetValue(key, out var zone)) { stage = zone.Stage; baseAddr = OverlayBase; }
-            else { skipped += CountBytes(runs); continue; } // other files (graphics, SEL): not placed
+            else if (ExtraStageKeys.TryGetValue(key, out var extraStage)) { stage = extraStage; baseAddr = OverlayBase; }
+            else { skipped += CountBytes(runs); continue; } // unknown file (older payloads' "BIN"): not placed
 
-            foreach (var run in runs!.AsArray())
+            foreach (var (offset, value) in Bytes(runs))
             {
-                uint offset = run![0]!.GetValue<uint>();
-                var data = Convert.FromHexString(run[1]!.GetValue<string>());
-                for (int i = 0; i < data.Length; i++)
-                {
-                    uint addr = baseAddr + offset + (uint)i;
-                    if (holdBackLibrarianItemPatch && stage == LibraryStage && InLibrarianItemPatch(addr)) { skipped++; continue; }
-                    Add(new RamWrite(stage, addr, data[i], 1));
-                    bytes++;
-                }
+                uint addr = baseAddr + (uint)offset;
+                if (holdBackLibrarianItemPatch && stage == LibraryStage && InLibrarianItemPatch(addr)) { skipped++; continue; }
+                Add(new RamWrite(stage, addr, value, 1));
+                bytes++;
             }
         }
         Log.Info($"seed patch data: {bytes} bytes to place, {skipped} not applicable to the recomp");
         return true;
+    }
+
+    static IEnumerable<(int Offset, byte Value)> Bytes(JsonNode? runs)
+    {
+        if (runs is not JsonArray list) yield break;
+        foreach (var run in list)
+        {
+            int offset = run![0]!.GetValue<int>();
+            var data = Convert.FromHexString(run[1]!.GetValue<string>());
+            for (int i = 0; i < data.Length; i++) yield return (offset + i, data[i]);
+        }
     }
 
     static int CountBytes(JsonNode? runs)
@@ -211,6 +262,27 @@ static class SeedPlan
         if (!Ready || SaveLink.Check(m) == SaveLink.Status.OtherSeed) return;
         ApLook.WriteArt(m);
         if (_byStage.TryGetValue(DraStage, out var list)) Write(m, list);
+
+        // drop_mod guaranteed (and easy): Rom.py patches the drop choice in DRA, which the recomp reads
+        // (RandoPatch.func_800FF494), and the luck roll in every stage's HitDetection, which it doesn't.
+        // The recomp's own "always drop" switch (RandoPatch.func_800FF460) covers the roll.
+        if (m.ReadU32(GuaranteedDropSite) == GuaranteedDropWord1 && m.ReadU32(GuaranteedDropSite + 4) == GuaranteedDropWord2)
+            m.WriteU32(AlwaysDropSwitch, AlwaysDropValue);
+    }
+
+    const uint GuaranteedDropSite = 0x800FF4C0, GuaranteedDropWord1 = 0x3C068009, GuaranteedDropWord2 = 0x34C67BF4;
+    const uint AlwaysDropSwitch = 0x800FF460, AlwaysDropValue = 0x34020100;
+
+    // Files loaded outside stage loads (SEL: title, file select, ending) are written each frame while
+    // loaded and the CD is idle, i.e. once the whole file is in. The writes are the same every time.
+    const uint IsUsingCdAddr = 0x8006C3B0, CdStepAddr = 0x8006C398;
+
+    public static void ApplyResidentFiles(IMemory m)
+    {
+        if (!Ready || _sel.Count == 0) return;
+        if (m.ReadU32(IsUsingCdAddr) != 0 || m.ReadU32(CdStepAddr) != 0) return;
+        if (System.Array.IndexOf(RecompOne.Runtime.Dispatch.Dispatcher.ActiveNames, "sel") < 0) return;
+        Write(m, _sel);
     }
 
     static void ApplyCurrentStage(string why, IMemory m)

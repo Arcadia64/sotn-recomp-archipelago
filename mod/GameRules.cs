@@ -57,6 +57,7 @@ static class GameRules
             {
                 ApplyDeathLink(m, frame);
                 AutoHeal(m);
+                OpenShortcuts(m, stage);
                 if (stage != _lastStage) OnStageChanged(m, _lastStage, stage);
                 ReportPosition(stage, room);
             }
@@ -123,6 +124,32 @@ static class GameRules
         uint hpMax = m.ReadU32(HpMaxAddr), mpMax = m.ReadU32(MpMaxAddr);
         if (m.ReadU32(HpAddr) != hpMax) m.WriteU32(HpAddr, hpMax);
         if (m.ReadU32(MpAddr) != mpMax) m.WriteU32(MpAddr, mpMax);
+    }
+
+    // ---- open_no4, open_are, unlocked_mode ----
+    // Rom.py makes the doors, levers and blocks involved read their castle flag as set ('li v0,1'); the
+    // recomp doesn't read those code bytes, so set the flags themselves, as opening them in play would.
+    const int EntranceToCaverns = 0x30, EntranceToMarble = 0x31, EntranceWarp = 0x32;
+    const int ChapelStatue = 0x60, ColosseumToChapel = 0xB1;
+    const int CastleEntranceAfterAlchemyLab = 0x07; // NP3
+
+    static void OpenShortcuts(IMemory m, int stage)
+    {
+        if (ApClient.OptionInt("unlocked_mode") > 0)
+            foreach (int flag in new[] { EntranceToCaverns, EntranceToMarble, EntranceWarp, ChapelStatue, ColosseumToChapel })
+                SetFlag(m, flag);
+
+        // open (1): from the entrance after visiting the Alchemy Laboratory; open_early (2): from the start.
+        int no4 = ApClient.OptionInt("open_no4");
+        if (no4 == 2 || no4 == 1 && stage == CastleEntranceAfterAlchemyLab) SetFlag(m, EntranceToCaverns);
+
+        if (ApClient.OptionInt("open_are") > 0) SetFlag(m, ColosseumToChapel);
+    }
+
+    static void SetFlag(IMemory m, int flag)
+    {
+        uint addr = Progress.CastleFlagsAddr + (uint)flag;
+        if (m.ReadU8(addr) == 0) m.WriteU8(addr, 1);
     }
 
     // ---- stage changes ----

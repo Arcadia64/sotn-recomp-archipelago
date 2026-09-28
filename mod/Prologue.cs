@@ -32,6 +32,13 @@ static class Prologue
         if (!ShouldSkip) return;
         if (m.ReadU32(Game.StageIdAddr) != PrologueStage) return;
         m.WriteU16(Game.StageIdAddr, EntranceFirstVisit);
+
+        // As Rom.py's no_prologue does: clear the time-attack records, which the prologue would have
+        // reset. Otherwise records from a save loaded earlier in the session carry over, and those
+        // bosses don't appear (and their checks would be sent at once).
+        for (uint i = 0; i < TimeAttackRecords; i++) m.WriteU32(Progress.TimeAttackAddr + i * 4, 0);
         Log.Info("new game: skipping the prologue");
     }
+
+    const uint TimeAttackRecords = 28;
 }

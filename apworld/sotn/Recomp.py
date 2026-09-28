@@ -7,10 +7,12 @@ into the disc image, but per file, to write them into RAM when that file is load
 
 recomp_payload() turns the patch's tokens into:
     {"version": 1,
-     "files": {"<zone key>" | "DRA" | "BIN": [[offset, "hex bytes"], ...]}}
-Zone keys (NO3, RBO2, ...) are stage and boss files, loaded at 0x80180000; offsets are within
-the file. "DRA" is DRA.BIN, loaded at 0x800A0000. Anything else stays as raw disc offsets under
-"BIN" for the mod to map from the disc's own directory if it needs them.
+     "files": {"<zone key>" | "DRA" | "SEL" | "MAR" | "F_GAME" | "F_GAME2" | "RIC": [[offset, "hex bytes"], ...]}}
+Zone keys (NO3, RBO2, ...) and MAR (the Clock Room cutscene, stage 0x17) are stage and boss files,
+loaded at 0x80180000; offsets are within the file. DRA is DRA.BIN (0x800A0000). SEL is the title and
+file-select overlay (also 0x80180000). F_GAME/F_GAME2 are graphics streamed to VRAM (Alucard/Richter).
+RIC is Richter's overlay. Anything else stays as raw disc offsets under "BIN" (none with the current
+Rom.py). The CD-loaded code block in WARNING.TIM is left out: the recomp never runs it.
 """
 import math
 from typing import Dict, List, Optional, Tuple
@@ -29,16 +31,31 @@ DRA_LBA = 299
 DRA_SIZE = 1153136
 DRA_RAM = 0x800A0000
 
-# DRA's Time Attack labels, which write_seed fills with data only the BizHawk client reads.
+# DRA's Time Attack labels, which write_seed fills with data only the BizHawk client reads. Rom.py
+# writes the same data again at DRA + SEED_COPY_OFFSET, which lands in SEL.BIN; that copy is skipped too.
 SEED_BLOCK = (0x800DFAEC - DRA_RAM, 0x800DFD44 - DRA_RAM)
+SEED_COPY_OFFSET = 0x4298798
+
+# Other files Rom.py writes to: key -> (LBA, size in bytes), from the disc's ISO9660 directory.
+OTHER_FILES = {
+    "SEL": (30031, 355112),        # /ST/SEL/SEL.BIN
+    "MAR": (45043, 110448),        # /BOSS/MAR/MAR.BIN
+    "F_GAME": (25038, 270336),     # /BIN/F_GAME.BIN
+    "F_GAME2": (25170, 270336),    # /BIN/F_GAME2.BIN
+    "RIC": (25814, 236120),        # /BIN/RIC.BIN
+    "WARNING": (24545, 327700),    # /WARNING.TIM (not sent)
+}
+SKIPPED_FILES = {"WARNING"}
 
 _ZONE_KEYS = {v: k for k, v in ZONE.items()}
 _ZONE_SPANS = [
     (zone["pos"], zone["pos"] + math.ceil(zone["len"] / SECTOR_DATA) * SECTOR, _ZONE_KEYS[num])
     for num, zone in zones.items() if "pos" in zone and "len" in zone
 ]
-_DRA_START = DRA_LBA * SECTOR
-_DRA_END = (DRA_LBA + math.ceil(DRA_SIZE / SECTOR_DATA)) * SECTOR
+# (first disc byte, end, key) for files whose data starts SECTOR_HEADER into their first sector.
+_SECTOR_SPANS = [(DRA_LBA * SECTOR, (DRA_LBA + math.ceil(DRA_SIZE / SECTOR_DATA)) * SECTOR, "DRA")] + [
+    (lba * SECTOR, (lba + math.ceil(size / SECTOR_DATA)) * SECTOR, key) for key, (lba, size) in OTHER_FILES.items()
+]
 
 
 def disc_to_file(offset: int) -> Optional[Tuple[str, int]]:
@@ -48,11 +65,21 @@ def disc_to_file(offset: int) -> Optional[Tuple[str, int]]:
         if start <= offset < end:
             sector, within = divmod(offset - start, SECTOR)
             return (key, sector * SECTOR_DATA + within) if within < SECTOR_DATA else None
-    if _DRA_START <= offset < _DRA_END:
-        sector, within = divmod(offset - _DRA_START, SECTOR)
-        within -= SECTOR_HEADER
-        return ("DRA", sector * SECTOR_DATA + within) if 0 <= within < SECTOR_DATA else None
+    for start, end, key in _SECTOR_SPANS:
+        if start <= offset < end:
+            sector, within = divmod(offset - start, SECTOR)
+            within -= SECTOR_HEADER
+            return (key, sector * SECTOR_DATA + within) if 0 <= within < SECTOR_DATA else None
     return "BIN", offset
+
+
+def _in_seed_block(key: str, disc_offset: int, file_offset: int) -> bool:
+    if key == "DRA":
+        return SEED_BLOCK[0] <= file_offset < SEED_BLOCK[1]
+    if key == "SEL":
+        original = disc_to_file(disc_offset - SEED_COPY_OFFSET)
+        return original is not None and original[0] == "DRA" and SEED_BLOCK[0] <= original[1] < SEED_BLOCK[1]
+    return False
 
 
 def recomp_payload(patch) -> Dict:
@@ -65,7 +92,7 @@ def recomp_payload(patch) -> Dict:
             if where is None:
                 continue
             key, file_offset = where
-            if key == "DRA" and SEED_BLOCK[0] <= file_offset < SEED_BLOCK[1]:
+            if key in SKIPPED_FILES or _in_seed_block(key, offset + i, file_offset):
                 continue
             by_file.setdefault(key, {})[file_offset] = byte  # later tokens win, as when patching
 
