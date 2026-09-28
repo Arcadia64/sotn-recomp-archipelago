@@ -1,3 +1,6 @@
+Next:
+1. In-game test pass of everything in the "not yet seen in game" list.
+2. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
 # SotN Archipelago for SymphonyRecomp: plan
 
 Goal: play SotN in an Archipelago multiworld on the PC recomp, on a **vanilla disc**, with no disc patch and no BizHawk.
@@ -35,13 +38,14 @@ Built, verified offline or by reading the code, not yet seen in game:
   (`Special.ShopEntryWithItem`, `ApLook` shop hooks).
 - DeathLink, auto_heal, Library card soft-lock escapes, Cave demon wall, tracker data storage keys.
 - Always-on AP fixes (`Fixes.cs`).
+- Every AP option that changes the game, including the ones the recomp can't take from the patch bytes
+  alone (`OptionHooks.cs`, `OptionData.g.cs`, graphics/SEL/RIC payload keys): see the status table in
+  `docs/research/options-audit.md`. Offline: payload equals the patch for every file, all 189 hooks
+  resolve (`tools/check_hooks.py`).
 
 Next:
-1. Options the recomp doesn't support from the patch bytes alone: see `docs/research/options-audit.md`,
-   then C# for each gap.
-2. In-game test pass of everything in the "not yet seen in game" list.
-3. Packaging (mod zip with icon and README, release `.apworld`); tracker PR (location 394, enemysanity
-   400-540); offer the AP world fixes upstream.
+1. In-game test pass of everything in the "not yet seen in game" list.
+2. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
 
 ---
 
