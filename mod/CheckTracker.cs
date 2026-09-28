@@ -12,7 +12,7 @@ static class CheckTracker
     const uint RelicBase = 0x80097964;
     const int FaerieScrollRelic = 15;
 
-    // Librarian (Jewel of Open slot): until the shop can be changed, visiting him counts as the check.
+    // Librarian (Jewel of Open slot): see IsCollectedAsVanilla.
     const long LibrarianLocation = 70;
     const int LibraryStage = 0x02;
     const ushort LibrarianRoom = 0x9470;
@@ -104,7 +104,15 @@ static class CheckTracker
     public static bool IsCollectedAsVanilla(IMemory m, LocationInfo loc)
     {
         if (loc.Id == LibrarianLocation)
+        {
+            // One of our relics: sold as that relic, so bought once it's owned. An item: sold as a normal
+            // shop entry, and ApLook records the purchase. Neither (not placed): visiting him counts.
+            if (ApClient.TryGetScout(loc.Id, out var s) && s.Player == ApClient.Slot
+                && s.Item >= ItemData.FirstRelic && s.Item <= ItemData.LastRelic)
+                return (m.ReadU8(RelicBase + (uint)(s.Item - ItemData.FirstRelic)) & 1) != 0;
+            if (SeedPlan.LibrarianSellsItem) return ApLook.LibrarianBought(m);
             return m.ReadU8(Game.StageIdAddr) == LibraryStage && m.ReadU16(RoomFingerprintAddr) == LibrarianRoom;
+        }
 
         switch (loc.Kind)
         {

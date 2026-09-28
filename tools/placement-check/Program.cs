@@ -25,7 +25,9 @@ foreach (var node in input["scouts"]!.AsArray())
 
     // Compared byte for byte with the AP world's patch, so place other players' items the way it does.
     var result = Placement.Compute(loc, scout, slot, Look.Bags);
-    foreach (var w in result.Writes) writes.Add(new JsonArray(loc.Id, w.Stage, w.Addr, w.Value, w.Size));
+    // Placed differently from the AP patch on purpose: reported, not compared.
+    if (result.DiffersFromPatch != null) unsupported.Add(new JsonArray(loc.Id, "by design: " + result.DiffersFromPatch));
+    else foreach (var w in result.Writes) writes.Add(new JsonArray(loc.Id, w.Stage, w.Addr, w.Value, w.Size));
     if (result.Unsupported != null) unsupported.Add(new JsonArray(loc.Id, result.Unsupported));
 
     var p = loc.Place;

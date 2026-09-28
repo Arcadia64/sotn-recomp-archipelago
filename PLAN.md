@@ -2,61 +2,71 @@
 
 Goal: play SotN in an Archipelago multiworld on the PC recomp, on a **vanilla disc**, with no disc patch and no BizHawk.
 
-Reference material (in `ref/`, not ours):
+Reference material (in `ref/`, not ours, not in git):
 - `ref/SymphonyRecomp` - the recomp, its RecompOne runtime, and the mods submodule
 - `ref/ap-world` - fdelduque AP world, Beta 0.8161 (world 0.8.16) and alpha 0.8142, plus a sparse clone
 - `ref/SOTN-AP-MapTracker` - Michpem PopTracker pack 0.2.14
-- `ref/ap-world-notes.md` - full breakdown of the AP world (every RAM address, every patch write, IDs, options, bugs)
+- `ref/archipelago` - Archipelago 0.6.7 for local seeds and a test server
+
+Our research notes: `docs/research/ap-world-notes.md` (every AP world patch write, RAM address, option, bug),
+`docs/research/ap-look-notes.md` (pickups, icons, gold, pickup text), `docs/research/options-audit.md`
+(each AP option vs what the recomp supports).
 
 ---
 
-## Hand-off (2026-09-28, end of session)
+## Status
 
-**In progress when stopped: the Librarian's Jewel of Open slot holding an item.**
-- Done (committed): `Special.ShopEntryWithItem` turns the Librarian's first shop entry (LIB 0x8018134C: u8 type, u8 availability, u16 id, u32 price) into a normal item entry, so the shop's own code lists, previews and sells it. `Placement` uses it for own items and other players' items (placeholder). `Placement.Result.DiffersFromPatch` marks it.
-- Not done yet (the edit was interrupted):
-  1. `ApLook.OnAddToInventory`: when `c.RA == 0x801B36FC` (shop purchase loop in `func_us_801B2BE4`, adds list row `c.S0` once per unit) and stage is LIB (0x02): if row 0, set `ApLook.LibrarianPurchased = true`; suppress the add when it's the placeholder (`c.A0 == 57 && c.A1 == 4`).
-  2. `ApLook.OnLoadEquipIcon`: in LIB with RA in 0x801B2900..0x801B6000 (shop code), use the Librarian's scout for the badge colour.
-  3. Name the placeholder in the shop list: pre/post hooks on `lib` `func_us_801B2BE4`, `func_us_801B4ED4`, `func_us_801B56E4` repoint accessoryDefs[57].name to a buffer at 0x8000E040 (depth-counted), restore after.
-  4. `CheckTracker.IsCollectedAsVanilla` for location 70: own relic -> relic byte owned; otherwise `ApLook.LibrarianPurchased`; room-visit fallback only when unsupported.
-  5. `SeedPlan`: in payload mode, apply `Placement` writes for location 70 when it isn't our relic (`inPayload = _fromPayload && own && (loc.Id != 70 || librarianHoldsRelic)`), and drop the later `if (_fromPayload && own) continue;`.
-  6. `tools/placement-check/Program.cs`: report `DiffersFromPatch` locations as "by design" instead of comparing their bytes.
-- Until then: the entry is sold correctly, but the check fires on visiting the Librarian, and buying another player's item there adds "----" to the inventory.
+Works in game (tested against a local AP 0.6.7 server):
+- Connect (auto-reconnect, compression), scouts, messages; seed options from slot_data.
+- Item placement on stage load. Stock seeds: `mod/Placement.cs` from scouts. Seeds from our AP world
+  (`apworld/`): the patch's own bytes from `slot_data["recomp"]`. Offline checks: 0 differences from the
+  official patch (`tools/verify_placement.py`, `tools/verify_payload.py`).
+- Other players' items: an AP badge (gold progression, blue useful, grey filler, red trap) named
+  "<player>'s <item>" on pickup, no gold, not added to the inventory.
+- Check detection for floor items, walls, relic spots, bosses, enemysanity, goal.
+- Receiving items (all kinds), only in normal play, count saved with the game; saves linked to a seed.
+- remove_prologue.
 
-**Next after that:** rerun the options audit (every AP option vs what the recomp detects; the agent was stopped before writing `docs/research/options-audit-*.md`), then C# for the gaps; in-game tests of late-game spots (Vlad bosses, Trio, Darkwing, the three code walls); packaging.
+Built, verified offline or by reading the code, not yet seen in game:
+- Special spots: Vlad relic bosses and Trio (one pickup between boss drop and room copy), Darkwing Bat
+  (drop slot fix), Gold ring / Holy glasses holding relics, the NO1/RNO1/RNO3 walls (`WallDrops.cs`).
+- Librarian's Jewel of Open slot: a relic sells as that relic; an item (own or another player's) sells as
+  a normal shop entry: named and badged in the list, one unit, gone once bought, the purchase is the check
+  (`Special.ShopEntryWithItem`, `ApLook` shop hooks).
+- DeathLink, auto_heal, Library card soft-lock escapes, Cave demon wall, tracker data storage keys.
+- Always-on AP fixes (`Fixes.cs`).
 
-**Research notes** (copied from `ref/`): `docs/research/ap-world-notes.md` (every AP world patch write, RAM address, option), `docs/research/ap-look-notes.md` (pickups, icons, gold, pickup text).
-
-**Setting up `ref/` on another PC** (not in git; needed to build and test):
-1. `git clone --depth 1 https://github.com/BlackLabelHQ/SymphonyRecomp.git ref/SymphonyRecomp` then `git -C ref/SymphonyRecomp submodule update --init --depth 1`
-2. Put the US bin/cue in `ref/SymphonyRecomp/disc` (names in its README); add `ref/SymphonyRecomp/nuget.config` with only nuget.org if a private NuGet feed is configured globally.
-3. .NET 10 SDK; `dotnet build ref/SymphonyRecomp/RecompOne/RecompOne.sln`; `dotnet run --project ref/SymphonyRecomp/RecompOne/RecompOne.Recompiler ref/SymphonyRecomp/config/sotn.json` (from `ref/SymphonyRecomp`); `dotnet build RecompOne.SoTN.csproj`.
-4. `git clone --depth 1 --branch 0.6.7 https://github.com/ArchipelagoMW/Archipelago.git ref/archipelago`; Python 3.12 venv in it; `pip install -r requirements.txt "setuptools<81"`; `python -c "import ModuleUpdate; ModuleUpdate.update(yes=True)"`; `mkdir custom_worlds`; `py -3.12 tools/build_apworld.py` and copy `dist/sotn.apworld` into `custom_worlds`.
-5. Upstream AP world 0.8.16.1 for comparisons: download `sotn.apworld` from https://github.com/fdelduque/Archipelago/releases/tag/b08161 and unzip to `ref/ap-world/apworld-b08161/` (tools/gen_location_data.py reads `ref/ap-world/apworld-b08161/sotn` by default; it can also be pointed at `apworld/sotn`).
-6. `tools/deploy-mod.sh` copies `mod/` into the recomp's `mods/archipelago`; enable it once in the game's Mods menu. See TESTING.md.
+Next:
+1. Options the recomp doesn't support from the patch bytes alone: see `docs/research/options-audit.md`,
+   then C# for each gap.
+2. In-game test pass of everything in the "not yet seen in game" list.
+3. Packaging (mod zip with icon and README, release `.apworld`); tracker PR (location 394, enemysanity
+   400-540); offer the AP world fixes upstream.
 
 ---
 
-## Status (2026-09-28)
+## Setting up a PC
 
-Milestone 1 (stock AP world 0.8.16, no disc patch) works in game against a local AP 0.6.7 server:
-
-- Connect, RoomInfo, DataPackage, scouts for every location, PrintJSON messages, compression (`mod/ApClient.cs`, `mod/WebSocketTransport.cs`).
-- Item placement on stage load (`mod/Placement.cs`, `mod/SeedPlan.cs`). `tools/verify_placement.py` compares it with the AP generator's own patch: 0 mismatches over 13 seed/slot combinations. Confirmed in game (Iron ball on the Cube of Zoe pedestal).
-- Check detection for floor items, walls, relic spots, bosses, enemysanity, goal (`mod/CheckTracker.cs`, table from `tools/gen_location_data.py`).
-- Receiving items: relics, vessels, hand and body items via the game's own AddToInventory; only in normal play; count saved with the game (`mod/ItemGiver.cs`, `mod/SaveLink.cs`). Confirmed in game for all item kinds.
-- Saves linked to a seed; a save from another seed pauses checks and items.
-- remove_prologue from the seed (`mod/Prologue.cs`).
-
-Not placed yet (the vanilla item stays; own items are given directly when the check fires):
-- Librarian's Jewel of Open slot (checked when you visit the Librarian)
-- Vlad relic bosses and Ring of Vlad holding anything but a relic; Trio reward
-- A relic at Holy glasses or the Gold ring
-- The NO1, RNO1 and RNO3 walls (item fixed in code the recomp didn't rewrite)
-
-Known gap: at the Vlad/Trio/Librarian spots you can still get the vanilla relic, which only opens things early.
-
-Not started: DeathLink, auto_heal, the "needs slot_data" options, AP-style item look and names in game, not-connected reminder at file select.
+`ref/` is not in git. To build and test:
+1. `git clone --depth 1 https://github.com/BlackLabelHQ/SymphonyRecomp.git ref/SymphonyRecomp`, then
+   `git -C ref/SymphonyRecomp submodule update --init --depth 1`.
+2. US bin/cue in `ref/SymphonyRecomp/disc` (exact names in its README). If a private NuGet feed is set up
+   globally, add `ref/SymphonyRecomp/nuget.config` listing only nuget.org (copy `tools/modcheck/nuget.config`).
+3. **Before building**, add `ref/SymphonyRecomp/Directory.Build.targets` with
+   `<Project><ItemGroup><Compile Remove="mods/**" /></ItemGroup></Project>`. The game project compiles
+   every `.cs` under its folder, so without this a deployed mod gets compiled into the game itself.
+4. .NET 10 SDK. From `ref/SymphonyRecomp`: `dotnet build RecompOne/RecompOne.sln`, then
+   `dotnet run --project RecompOne/RecompOne.Recompiler config/sotn.json`, then `dotnet build RecompOne.SoTN.csproj`
+   (about 7 minutes).
+5. `git clone --depth 1 --branch 0.6.7 https://github.com/ArchipelagoMW/Archipelago.git ref/archipelago`;
+   Python 3.12 venv in `ref/archipelago/.venv`; `pip install -r requirements.txt "setuptools<81"`;
+   `python -c "import ModuleUpdate; ModuleUpdate.update(yes=True)"`; `mkdir custom_worlds`.
+6. Upstream AP world 0.8.16.1: download `sotn.apworld` from
+   https://github.com/fdelduque/Archipelago/releases/tag/b08161 into `ref/ap-world/apworld-b08161/` and unzip
+   it there (`tools/gen_location_data.py` reads `ref/ap-world/apworld-b08161/sotn` by default).
+7. `tools/make_test_seeds.sh` generates the stock and fork test seeds; `tools/deploy-mod.sh` copies `mod/`
+   into the game's `mods/archipelago` (enable it once in the game's Mods menu); `dotnet build tools/modcheck`
+   compile-checks the mod. See TESTING.md.
 
 ---
 

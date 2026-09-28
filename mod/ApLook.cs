@@ -153,7 +153,7 @@ static class ApLook
     static void OnLoadEquipIcon(CpuContext c, IMemory m)
     {
         if (!Active || !FromStage(c) || c.A0 != PlaceholderIcon || c.A1 != PlaceholderPalette) return;
-        var item = Resolve(m, m.ReadU32(CurrentEntityAddr), remember: false);
+        var item = InShopCode(c, m) ? LibrarianScout() : Resolve(m, m.ReadU32(CurrentEntityAddr), remember: false);
         c.A0 = ApIcon;
         c.A1 = (uint)PaletteFor(item);
     }
@@ -162,6 +162,17 @@ static class ApLook
     static bool OnAddToInventory(CpuContext c, IMemory m)
     {
         if (!Active || !FromStage(c)) return true;
+
+        // The Librarian's purchase loop: AddToInventory(list[S0].id, kind) once per unit bought. Until
+        // the slot is bought, list row 0 is its entry (always shown, first in the table).
+        if (c.RA == ShopPurchaseReturn && m.ReadU8(Game.StageIdAddr) == LibraryStage)
+        {
+            if (c.S0 != 0 || !SeedPlan.LibrarianSellsItem || LibrarianBought(m)) return true;
+            m.WriteU8(LibrarianBoughtFlag, (byte)(m.ReadU8(LibrarianBoughtFlag) | LibrarianBoughtBit));
+            Log.Info("bought the Librarian's item");
+            return !(c.A0 == PlaceholderAccessory && c.A1 == ShopAccessoryKind); // never sell "----" into the inventory
+        }
+
         long item = c.A1 == 0 ? c.A0 : c.A0 + 169;
         SpecialSpots.OnPickup(m, item);
         if (c.A0 != PlaceholderAccessory || c.A1 != AccessoryKind) return true;
@@ -175,6 +186,99 @@ static class ApLook
             c.S1 = TextBuffer;
         }
         return false; // never add "----" to the inventory
+    }
+
+    // ---- the Librarian's shop ----
+    // The Jewel of Open slot (first shop entry) sells the seed's item as a normal entry
+    // (Special.ShopEntryWithItem). Research: shop list builder func_us_801B29C4 (RandoPatch.cs),
+    // purchase func_us_801B2BE4, info panel func_us_801B4ED4, list names func_us_801B56E4.
+
+    const int LibraryStage = 0x02;
+    const long LibrarianLocation = 70;
+    const uint ShopPurchaseReturn = 0x801B36FC;        // after g_api.AddToInventory in the purchase loop
+    const int ShopAccessoryKind = 4;                   // kind the shop passes for accessories
+    const uint ShopCodeStart = 0x801B2900, ShopCodeEnd = 0x801B6000;
+    const uint ShopEntry0Visibility = 0x8018134D;      // 0 = always listed, 0x86-0xFE = never
+    const uint ShopQuantity0 = 0x801D415C;             // units selected for list row 0 (u32)
+    const uint ShopNameBuffer = 0x8000E040, ShopDescBuffer = 0x8000E080;
+    const int ShopNameGlyphs = 20, ShopDescChars = 28;
+
+    // Saved with the game: CF[0xFB] bit 7 (OwedItems uses 0xFA-0xFB bits 0-4).
+    const uint LibrarianBoughtFlag = Progress.CastleFlagsAddr + 0xFB;
+    const byte LibrarianBoughtBit = 0x80;
+
+    public static bool LibrarianBought(IMemory m) => (m.ReadU8(LibrarianBoughtFlag) & LibrarianBoughtBit) != 0;
+
+    static bool InShopCode(CpuContext c, IMemory m) =>
+        m.ReadU8(Game.StageIdAddr) == LibraryStage && c.RA >= ShopCodeStart && c.RA < ShopCodeEnd;
+
+    static NetworkItem? LibrarianScout() => ApClient.TryGetScout(LibrarianLocation, out var s) ? s : null;
+
+    static bool ShopSellsOthersItem => Active && SeedPlan.LibrarianSellsItem && LibrarianScout() is { } s && s.Player != ApClient.Slot;
+
+    // Listed until bought, then gone (the AP patch left it for sale forever).
+    [PreHook("lib", "func_us_801B29C4")]
+    static void BeforeShopList(CpuContext c, IMemory m)
+    {
+        if (!Active || !SeedPlan.LibrarianSellsItem) return;
+        m.WriteU8(ShopEntry0Visibility, (byte)(LibrarianBought(m) ? 0xFE : 0x00));
+    }
+
+    // One unit: it's one check.
+    [PreHook("lib", "func_us_801B2BE4")]
+    static void BeforeShopMenu(CpuContext c, IMemory m) => LimitQuantity(m);
+
+    [PostHook("lib", "func_us_801B420C")]
+    static void AfterShopQuantity(CpuContext c, IMemory m) => LimitQuantity(m);
+
+    static void LimitQuantity(IMemory m)
+    {
+        if (!Active || !SeedPlan.LibrarianSellsItem || LibrarianBought(m)) return;
+        if (m.ReadU32(ShopQuantity0) > 1) m.WriteU32(ShopQuantity0, 1);
+    }
+
+    // While the list and info panel draw, "----" (the placeholder) carries the other player's item
+    // name and a short description; everywhere else it stays "----" (empty accessory slots).
+    static int _shopDepth;
+    static uint _savedName, _savedDesc;
+
+    [PreHook("lib", "func_us_801B56E4")]
+    static void ShopNamesIn(CpuContext c, IMemory m) => NameShopPlaceholder(m, enter: true);
+    [PostHook("lib", "func_us_801B56E4")]
+    static void ShopNamesOut(CpuContext c, IMemory m) => NameShopPlaceholder(m, enter: false);
+    [PreHook("lib", "func_us_801B4ED4")]
+    static void ShopInfoIn(CpuContext c, IMemory m) => NameShopPlaceholder(m, enter: true);
+    [PostHook("lib", "func_us_801B4ED4")]
+    static void ShopInfoOut(CpuContext c, IMemory m) => NameShopPlaceholder(m, enter: false);
+
+    static void NameShopPlaceholder(IMemory m, bool enter)
+    {
+        uint def = m.ReadU32(AccessoryDefsPtr) + PlaceholderAccessory * 0x20u;
+        if (enter)
+        {
+            if (!ShopSellsOthersItem || _shopDepth++ > 0) return;
+            var scout = LibrarianScout();
+            _savedName = m.ReadU32(def);
+            _savedDesc = m.ReadU32(def + 4);
+            WriteCornerText(m, ShopNameBuffer, Describe(scout, ShopNameGlyphs));
+            string player = scout is { } s ? Clean(ApClient.PlayerName(s.Player)) : "";
+            WriteAscii(m, ShopDescBuffer, $"Archipelago item for {player}", ShopDescChars);
+            m.WriteU32(def, ShopNameBuffer);
+            m.WriteU32(def + 4, ShopDescBuffer);
+        }
+        else if (_shopDepth > 0 && --_shopDepth == 0)
+        {
+            m.WriteU32(def, _savedName);
+            m.WriteU32(def + 4, _savedDesc);
+        }
+    }
+
+    // Item descriptions are plain ASCII ending in 0 (names use the corner-text encoding).
+    static void WriteAscii(IMemory m, uint at, string text, int max)
+    {
+        int n = System.Math.Min(text.Length, max);
+        for (int i = 0; i < n; i++) m.WriteU8(at + (uint)i, (byte)text[i]);
+        m.WriteU8(at + (uint)n, 0);
     }
 
     // ---- which location a pickup is ----
@@ -217,17 +321,17 @@ static class ApLook
 
     // ---- name text ----
 
-    static string Describe(NetworkItem? scout)
+    static string Describe(NetworkItem? scout, int max = MaxTextGlyphs)
     {
         if (scout is not { } s) return "Archipelago item";
         string player = Clean(ApClient.PlayerName(s.Player));
         string item = Clean(ApClient.ItemName(s.Item, s.Player));
         string text = $"{player}'s {item}";
-        if (text.Length <= MaxTextGlyphs) return text;
+        if (text.Length <= max) return text;
         // Keep the item name whole where possible; shorten the player name first.
-        int room = MaxTextGlyphs - item.Length - 3;
+        int room = max - item.Length - 3;
         if (room >= 3) return $"{player[..System.Math.Min(player.Length, room)]}'s {item}";
-        return item.Length <= MaxTextGlyphs ? item : item[..MaxTextGlyphs];
+        return item.Length <= max ? item : item[..max];
     }
 
     // Glyphs proven by vanilla item names; anything else becomes a space.

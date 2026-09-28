@@ -28,7 +28,7 @@ static class SeedPlan
     // Where the AP patch makes the Librarian sell an item instead of a relic: shop entry data and
     // 14 code edits plus injected routines in LIB (Rom.py replace_shop_relic_with_item). The recomp
     // reads 0x801B2B08 as the relic-owned offset, which that patch overwrites with a jump, so these
-    // are held back and the slot is handled as not placed (checked on visiting the Librarian).
+    // are held back; the item is sold as a normal shop entry instead (Special.ShopEntryWithItem).
     static readonly (uint From, uint To)[] LibrarianItemPatch =
     [
         (0x8018134C, 0x8018134F), (0x801814D4, 0x801814D5), (0x801B2B08, 0x801B2B0F), (0x801B2B80, 0x801B2B83),
@@ -47,6 +47,10 @@ static class SeedPlan
     public static bool Ready => _builtFor >= 0 && _builtFor == ApClient.ConnectionId;
     public static bool FromPayload => _fromPayload;
     public static int UnsupportedCount => _unsupported.Count;
+
+    // The Librarian's Jewel of Open slot sells an item (own or another player's) as a normal shop
+    // entry (Special.ShopEntryWithItem), rather than a relic.
+    public static bool LibrarianSellsItem { get; private set; }
 
     // Spots whose item the mod can't place yet; the vanilla item stays and own items are given directly.
     public static bool IsUnsupported(long location) => Ready && _unsupported.Contains(location);
@@ -81,10 +85,11 @@ static class SeedPlan
             IndexPickups(loc, scout, slot);
 
             bool own = scout.Player == slot;
-            if (_fromPayload && own && loc.Id != LibrarianLocation) continue; // already in the patch bytes
+            // Already in the patch bytes. The Librarian's relic is too; an item there is not (held back).
+            if (_fromPayload && own && (loc.Id != LibrarianLocation || librarianHoldsRelic)) continue;
 
-            // Stock seeds: everything from Placement. Payload seeds: other players' items only, over
-            // the patch's money bags and Secret boots.
+            // Stock seeds: everything from Placement. Payload seeds: other players' items (over the
+            // patch's money bags and Secret boots) and an item in the Librarian's slot.
             var result = Placement.Compute(loc, scout, slot, Look.ApItem);
             if (result.Unsupported != null)
             {
@@ -92,11 +97,12 @@ static class SeedPlan
                 Log.Info($"not placed yet: {loc.Name} ({result.Unsupported}); checked on arrival, own items are given directly");
                 continue;
             }
-            if (_fromPayload && own) continue; // Librarian relic: in the patch bytes
             foreach (var w in result.Writes) Add(w);
         }
         if (!_fromPayload) foreach (var w in Placement.Always) Add(w);
 
+        LibrarianSellsItem = ApClient.TryGetScout(LibrarianLocation, out _) && !librarianHoldsRelic
+            && !_unsupported.Contains(LibrarianLocation);
         _builtFor = ApClient.ConnectionId;
         Log.Info($"placement ready ({(_fromPayload ? "patch data from the seed" : "worked out from scouts")}): "
                + $"{_byStage.Count} stage(s), {_unsupported.Count} spot(s) not placed yet");
