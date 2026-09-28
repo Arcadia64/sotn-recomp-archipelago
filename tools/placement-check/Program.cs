@@ -23,7 +23,8 @@ foreach (var node in input["scouts"]!.AsArray())
     var loc = LocationData.Get(scout.Location);
     if (loc == null) { unsupported.Add(new JsonArray(scout.Location, "not in LocationData")); continue; }
 
-    var result = Placement.Compute(loc, scout, slot);
+    // Compared byte for byte with the AP world's patch, so place other players' items the way it does.
+    var result = Placement.Compute(loc, scout, slot, Look.Bags);
     foreach (var w in result.Writes) writes.Add(new JsonArray(loc.Id, w.Stage, w.Addr, w.Value, w.Size));
     if (result.Unsupported != null) unsupported.Add(new JsonArray(loc.Id, result.Unsupported));
 

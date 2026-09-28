@@ -422,19 +422,21 @@ public static class ApClient
     {
         var text = RenderText(p["data"] as JsonArray);
         if (text.Length == 0) return;
-        Log.Info(text);
 
         // Pop up what we found for other players; the game shows our own finds, and received
         // items get their own message when they're given (ItemGiver). The log has everything.
         string type = p["type"]?.GetValue<string>() ?? "";
         int receiving = p["receiving"]?.GetValue<int>() ?? -1;
-        var item = p["item"] as JsonObject;
-        int finder = item?["player"]?.GetValue<int>() ?? -1;
-        if (type == "ItemSend" && finder == Slot && receiving != Slot && item != null)
+        var itemNode = p["item"] as JsonObject;
+        if (type == "ItemSend" && itemNode != null)
         {
-            long id = item["item"]!.GetValue<long>();
-            _toasts.Enqueue(("Archipelago", $"Sent {ItemName(id, receiving)} to {PlayerName(receiving)}"));
+            var item = Items(new JsonArray(itemNode.DeepClone())).First();
+            Log.Item(text, item);
+            if (item.Player == Slot && receiving != Slot)
+                _toasts.Enqueue(($"Sent ({ItemClass.Name(item)})", $"{ItemName(item.Item, receiving)} to {PlayerName(receiving)}"));
+            return;
         }
+        Log.Info(text);
     }
 
     static void OnBounced(JsonObject p)

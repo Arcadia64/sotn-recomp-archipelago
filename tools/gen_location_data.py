@@ -223,9 +223,21 @@ def placement(name, loc, zones_mod, disc):
     for group in loc.get("ids", []):
         ring_ids += [mapped(a) for a in group["addresses"]]
 
+    # The stage pickup flag for the location's item-table slot (set when an item pickup there is
+    # collected), in every zone the location is listed for. Also for spots detected another way
+    # (boss kills), whose converted pickups use the same slot.
+    pickup_flags = []
+    if index >= 0:
+        for z in zone_nums:
+            flag = zones_mod.zones[z].get("loot_flag")
+            if flag is not None and RAM + flag + index // 8 not in pickup_flags:
+                pickup_flags.append(RAM + flag + index // 8)
+    flags = "[" + ", ".join(f"0x{a:08X}" for a in pickup_flags) + "]"
+
     return (f"new({index}, {cs_addrs(item_table)}, {cs_addrs(entities)}, {cs_xy(loc.get('as_relic'))}, "
             f"{cs_xy(loc.get('as_item'))}, {'true' if loc.get('no_offset') else 'false'}, {cs_addrs(addresses)}, "
-            f"{cs_addrs(boss)}, {cs_addrs(reward)}, {cs_addrs(ring_ids)}, {'true' if loc.get('trio') else 'false'})")
+            f"{cs_addrs(boss)}, {cs_addrs(reward)}, {cs_addrs(ring_ids)}, {'true' if loc.get('trio') else 'false'}, "
+            f"{flags}, {index % 8 if index >= 0 else 0})")
 
 
 def main():

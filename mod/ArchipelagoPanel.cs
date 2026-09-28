@@ -132,7 +132,11 @@ public sealed class ArchipelagoPanel : IPanel
         if (ImGui.BeginChild("##aplog", Vector2.Zero, ImGuiChildFlags.Border))
         {
             foreach (var line in Log.Snapshot())
-                ImGui.TextWrapped(line);
+            {
+                if (line.Colour is { } colour) ImGui.PushStyleColor(ImGuiCol.Text, colour);
+                ImGui.TextWrapped(line.Text);
+                if (line.Colour != null) ImGui.PopStyleColor();
+            }
             if (_autoScroll && ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
                 ImGui.SetScrollHereY(1.0f);
         }

@@ -28,7 +28,9 @@ public sealed record Place(
     StageAddr[] BossDrop,     // boss overlay drop tile
     StageAddr[] Reward,       // Vlad relic boss reward table slot
     StageAddr[] RingIds,      // Ring of Vlad relic id spots
-    bool Trio);
+    bool Trio,
+    uint[] PickupFlags,       // stage pickup flag byte for the item-table slot, per zone; empty if none
+    int PickupBit);
 
 public sealed record LocationInfo(
     long Id,

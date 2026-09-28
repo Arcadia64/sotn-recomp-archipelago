@@ -10,9 +10,21 @@ public readonly record struct RamWrite(int Stage, uint Addr, ushort Value, byte 
 // per-location part of the AP world's Rom.py write_tokens (b08161, lines 800-1013), writing
 // to RAM on stage load instead of to the disc image. Pure: no game access, so it can be
 // checked offline against the patch the AP generator produces (tools/verify_placement.py).
+// How other players' items look in the castle.
+public enum Look
+{
+    ApItem,  // the "----" accessory (item 226), drawn with the AP icon and named by ApLook
+    Bags,    // what the AP world's patch uses: money bags, Secret boots (tools/verify_placement.py)
+}
+
 public static class Placement
 {
     const int TileIdOffset = 0x80;
+
+    // "----" (accessory 57, the empty-accessory entry): never in the pool, never an enemy or shop
+    // item, so a pickup of it is always one of ours. ApLook swaps its icon and name at pickup.
+    public const long PlaceholderItem = 226;
+    public static readonly ItemInfo Placeholder = new(PlaceholderItem, "AP item", ItemType.Accessory);
     const ushort RelicEntity = 0x000B;
     const ushort ItemEntity = 0x000C;
 
@@ -32,14 +44,14 @@ public static class Placement
     // Always applied, whatever the seed: the Librarian sells Jewel of Open for 10 gold (Rom.py 1016).
     public static readonly RamWrite[] Always = [new(0x02, 0x80181350, 10)];
 
-    public static Result Compute(LocationInfo loc, NetworkItem scout, int slot)
+    public static Result Compute(LocationInfo loc, NetworkItem scout, int slot, Look look = Look.ApItem)
     {
         var r = new Result();
         if (loc.Name.StartsWith("Enemysanity")) return r; // granted by the client, nothing placed
 
         var p = loc.Place;
         if (scout.Player == slot) Own(loc, p, scout, r);
-        else Remote(loc, p, scout, r);
+        else Remote(loc, p, scout, r, look);
         return r;
     }
 
@@ -121,13 +133,16 @@ public static class Placement
         else r.Unsupported = "no known way to place an item here";
     }
 
-    static void Remote(LocationInfo loc, Place p, NetworkItem scout, Result r)
+    static void Remote(LocationInfo loc, Place p, NetworkItem scout, Result r, Look look)
     {
-        ushort bag = scout.Progression ? BlueBag : scout.Useful ? RedBag : YellowBag;
-        ushort boots = (ushort)(ItemData.SecretBoots + TileIdOffset);
+        // Rom.py uses a money bag coloured by importance at item-table spots, Secret boots elsewhere.
+        bool ap = look == Look.ApItem;
+        ushort bag = ap ? (ushort)(PlaceholderItem + TileIdOffset) : scout.Progression ? BlueBag : scout.Useful ? RedBag : YellowBag;
+        ushort boots = (ushort)((ap ? PlaceholderItem : ItemData.SecretBoots) + TileIdOffset);
+        ushort rawBoots = (ushort)(ap ? PlaceholderItem : ItemData.SecretBoots);
         string vanilla = loc.VanillaItem;
 
-        var bootsItem = ItemData.Get(ItemData.SecretBoots)!;
+        var bootsItem = ap ? Placeholder : ItemData.Get(ItemData.SecretBoots)!;
         if (loc.IsRelicSpot)
         {
             if (vanilla == "Jewel of open") { r.Unsupported = $"other player's item in place of {vanilla}"; return; }
@@ -139,7 +154,7 @@ public static class Placement
 
         if (p.NoOffset || vanilla == "Holy glasses")
         {
-            Put(r, p.Addresses, (ushort)ItemData.SecretBoots);
+            Put(r, p.Addresses, rawBoots);
             return;
         }
 

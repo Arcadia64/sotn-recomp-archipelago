@@ -60,7 +60,9 @@ static class ItemGiver
             SaveLink.SetReceivedCount(m, given + 1);
             _lastGrantFrame = frame;
             string from = item.Player == ApClient.Slot ? "yourself" : ApClient.PlayerName(item.Player);
-            Announce($"Received {ApClient.ItemName(item.Item, ApClient.Slot)} from {from}");
+            string name = ApClient.ItemName(item.Item, ApClient.Slot);
+            Log.Item($"Received {name} from {from}", item);
+            ApClient.ShowToast($"Received ({ItemClass.Name(item)})", $"{name} from {from}");
             return;
         }
 
