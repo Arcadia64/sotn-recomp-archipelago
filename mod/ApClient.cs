@@ -29,6 +29,8 @@ public static class ApClient
     static string _slotName = "";
     static string _password = "";
     static string _uuid = "";
+    static volatile bool _refused;
+    static readonly int[] RetrySeconds = [2, 5, 10, 20, 30];
 
     // Everything below is guarded by _gate.
     static ConnectionState _state = ConnectionState.Disconnected;
@@ -94,10 +96,29 @@ public static class ApClient
         _slotName = slotName.Trim();
         _password = password;
         _uuid = ClientUuid();
+        _refused = false;
         var cts = new CancellationTokenSource();
         _cts = cts;
         SetState(ConnectionState.Connecting, $"Connecting to {server}...");
-        _ = Task.Run(() => RunAsync(server.Trim(), cts.Token));
+        _ = Task.Run(() => KeepConnectedAsync(server.Trim(), cts.Token));
+    }
+
+    // Reconnects after a dropped connection, backing off, until Disconnect or the server refuses us.
+    static async Task KeepConnectedAsync(string server, CancellationToken ct)
+    {
+        int failures = 0;
+        while (!ct.IsCancellationRequested)
+        {
+            bool wasConnected = await RunAsync(server, ct);
+            if (ct.IsCancellationRequested || _refused) return;
+            failures = wasConnected ? 0 : failures + 1;
+            int wait = RetrySeconds[System.Math.Min(failures, RetrySeconds.Length - 1)];
+            string why;
+            lock (_gate) why = _status;
+            SetState(ConnectionState.Connecting, $"{why}. Retrying in {wait}s...");
+            try { await Task.Delay(TimeSpan.FromSeconds(wait), ct); }
+            catch (OperationCanceledException) { return; }
+        }
     }
 
     public static void Disconnect()
@@ -122,8 +143,10 @@ public static class ApClient
         SetState(ConnectionState.Disconnected, "Not connected");
     }
 
-    static async Task RunAsync(string server, CancellationToken ct)
+    // One connection attempt and session. True if the server accepted us before it ended.
+    static async Task<bool> RunAsync(string server, CancellationToken ct)
     {
+        int connectedBefore = ConnectionId;
         WebSocketTransport? socket = null;
         Exception? lastError = null;
         foreach (var uri in CandidateUris(server))
@@ -145,7 +168,7 @@ public static class ApClient
         {
             if (!ct.IsCancellationRequested)
                 SetState(ConnectionState.Disconnected, $"Could not connect: {lastError?.Message}");
-            return;
+            return false;
         }
 
         _socket = socket;
@@ -170,6 +193,7 @@ public static class ApClient
             if (_socket == socket) _socket = null;
             socket.Dispose();
         }
+        return ConnectionId != connectedBefore;
     }
 
     // Same order as the official client: secure first when no scheme is given.
@@ -339,6 +363,7 @@ public static class ApClient
         var errors = p["errors"]?.AsArray().Select(e => e?.GetValue<string>()).ToList() ?? [];
         var reason = errors.Count > 0 ? string.Join(", ", errors) : "unknown reason";
         Log.Error($"connection refused: {reason}");
+        _refused = true;
         _cts?.Cancel();
         SetState(ConnectionState.Disconnected, $"Refused: {reason}");
     }
@@ -399,12 +424,17 @@ public static class ApClient
         if (text.Length == 0) return;
         Log.Info(text);
 
-        // Pop up only the messages about our own items; the log has everything.
+        // Pop up what we found for other players; the game shows our own finds, and received
+        // items get their own message when they're given (ItemGiver). The log has everything.
         string type = p["type"]?.GetValue<string>() ?? "";
         int receiving = p["receiving"]?.GetValue<int>() ?? -1;
-        int finder = p["item"]?["player"]?.GetValue<int>() ?? -1;
-        if (type is "ItemSend" && (receiving == Slot || finder == Slot))
-            _toasts.Enqueue(("Archipelago", text));
+        var item = p["item"] as JsonObject;
+        int finder = item?["player"]?.GetValue<int>() ?? -1;
+        if (type == "ItemSend" && finder == Slot && receiving != Slot && item != null)
+        {
+            long id = item["item"]!.GetValue<long>();
+            _toasts.Enqueue(("Archipelago", $"Sent {ItemName(id, receiving)} to {PlayerName(receiving)}"));
+        }
     }
 
     static void OnBounced(JsonObject p)

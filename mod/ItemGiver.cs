@@ -5,7 +5,7 @@ using Sotn;
 
 namespace SotnArchipelago;
 
-// Gives Alucard the items the server sends, and own items from spots the mod can't place yet.
+// Gives Alucard the items the server sends, and own items the game can't hand out (OwedItems).
 // Only while it's safe (normal play, not paused, alive), one item at a time so each gets its
 // own message. The count of server items already given is saved with the game (SaveLink), so
 // loading an older save gives back anything received after it.
@@ -42,7 +42,7 @@ static class ItemGiver
         if (frame - _lastGrantFrame < GrantInterval) return;
 
         var received = ApClient.Received;
-        bool pending = _direct.Count > 0 || SaveLink.ReceivedCount(m) < received.Length;
+        bool pending = _direct.Count > 0 || SaveLink.ReceivedCount(m) < received.Length || OwedItems.Next(m) != null;
         string? blocked = WhyNotSafe(m);
         if (blocked == null && SaveLink.Claim(m) != SaveLink.Status.ThisSeed) blocked = "save not linked to this seed";
         if (blocked != null)
@@ -70,6 +70,15 @@ static class ItemGiver
             Give(m, id);
             _lastGrantFrame = frame;
             Announce($"Got {ApClient.ItemName(id, ApClient.Slot)} ({why})");
+            return;
+        }
+
+        if (SeedPlan.Ready && OwedItems.Next(m) is { } owed)
+        {
+            Give(m, owed.Item);
+            OwedItems.MarkGiven(m, owed);
+            _lastGrantFrame = frame;
+            Announce($"Got {ApClient.ItemName(owed.Item, ApClient.Slot)} ({owed.Why})");
         }
     }
 

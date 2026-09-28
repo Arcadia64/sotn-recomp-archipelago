@@ -18,7 +18,8 @@ static class CheckTracker
     const ushort LibrarianRoom = 0x9470;
     const uint RoomFingerprintAddr = 0x80073084; // low half of g_Tilemap, as the BizHawk client reads it
 
-    // Killing Doppleganger 40 also counts the Doppleganger 10 fight if it was skipped (BizHawk client).
+    // Killing Doppleganger 40 also counts the Doppleganger 10 fight if it was skipped (BizHawk client);
+    // its item is then given by OwedItems.
     const long Dopp40Location = 397;
     const long Dopp10Location = 388;
 
@@ -66,8 +67,8 @@ static class CheckTracker
             if (!ApClient.IsMissing(loc.Id)) continue;
             if (IsCollected(m, loc, slot)) found.Add(loc.Id);
         }
-        bool dopp10Skipped = found.Contains(Dopp40Location) && ApClient.IsMissing(Dopp10Location) && !found.Contains(Dopp10Location);
-        if (dopp10Skipped) found.Add(Dopp10Location);
+        if (found.Contains(Dopp40Location) && ApClient.IsMissing(Dopp10Location) && !found.Contains(Dopp10Location))
+            found.Add(Dopp10Location);
 
         if (found.Count > 0)
         {
@@ -76,7 +77,10 @@ static class CheckTracker
                 var loc = LocationData.Get(id);
                 Log.Info($"checked: {loc?.Name ?? id.ToString()}");
                 // Spots collected before this save was linked gave their vanilla item, so give the seed's.
-                GiveIfNotPlaced(loc, id, slot, skipped: playedUnlinked || dopp10Skipped && id == Dopp10Location);
+                // (Special spots and enemysanity are covered by OwedItems either way.)
+                if (playedUnlinked && loc != null && loc.Kind != Detect.Enemy && !SeedPlan.IsUnsupported(id)
+                    && ApClient.TryGetScout(id, out var scout) && scout.Player == slot)
+                    ItemGiver.QueueDirect(scout.Item, loc.Name);
             }
             ApClient.SendChecks(found);
         }
@@ -84,20 +88,8 @@ static class CheckTracker
         CheckGoal(m);
     }
 
-    // Own items are given directly when there is nothing to pick up: spots the mod can't place yet,
-    // enemysanity (no spot at all), and a Dopp10 fight that was skipped.
-    static void GiveIfNotPlaced(LocationInfo? loc, long id, int slot, bool skipped)
-    {
-        if (loc == null || !ApClient.TryGetScout(id, out var scout) || scout.Player != slot) return;
-        if (skipped || loc.Kind == Detect.Enemy || SeedPlan.IsUnsupported(id))
-            ItemGiver.QueueDirect(scout.Item, loc.Name);
-    }
-
     static bool IsCollected(IMemory m, LocationInfo loc, int slot)
     {
-        if (loc.Id == LibrarianLocation)
-            return m.ReadU8(Game.StageIdAddr) == LibraryStage && m.ReadU16(RoomFingerprintAddr) == LibrarianRoom;
-
         // A spot holding one of our own relics spawns a relic, which sets no pickup bit; it counts
         // once that relic is owned. Not for spots the mod couldn't change: those still hold the vanilla item.
         if (loc.Kind == Detect.Loot && !SeedPlan.IsUnsupported(loc.Id) && ApClient.TryGetScout(loc.Id, out var scout)
@@ -105,6 +97,14 @@ static class CheckTracker
         {
             return (m.ReadU8(RelicBase + (uint)(scout.Item - ItemData.FirstRelic)) & 1) != 0;
         }
+        return IsCollectedAsVanilla(m, loc);
+    }
+
+    // Whether the spot's own flag says it was collected, whatever item it held.
+    public static bool IsCollectedAsVanilla(IMemory m, LocationInfo loc)
+    {
+        if (loc.Id == LibrarianLocation)
+            return m.ReadU8(Game.StageIdAddr) == LibraryStage && m.ReadU16(RoomFingerprintAddr) == LibrarianRoom;
 
         switch (loc.Kind)
         {

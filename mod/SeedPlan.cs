@@ -76,10 +76,18 @@ static class SeedPlan
         list.Add(w);
     }
 
-    // Stage overlays are loaded by the time this runs; the built-in randomizer applies its
-    // stage writes from the same place (Randomizer.ApplyInternalRandomizer).
+    // func_800F16D0 works out the stage to load. RunMainEngine calls it when setting up a stage whose
+    // overlay is already loaded, which is where the built-in randomizer applies its stage writes
+    // too (Randomizer.ApplyInternalRandomizer). HandlePlay also calls it before the overlay is
+    // loaded; writes then would land in the previous overlay (e.g. the file select) and be lost.
+    const uint HandlePlayCallReturn = 0x800E4CE0;
+
     [PreHook("dra", "func_800F16D0")]
-    static void OnStageLoad(CpuContext c, IMemory m) => ApplyCurrentStage("stage load", m);
+    static void OnStageLoad(CpuContext c, IMemory m)
+    {
+        if (c.RA == HandlePlayCallReturn) return;
+        ApplyCurrentStage("stage load", m);
+    }
 
     static void ApplyCurrentStage(string why, IMemory? m)
     {
