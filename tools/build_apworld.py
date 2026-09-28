@@ -23,6 +23,8 @@ def main():
                 path = os.path.join(root, f)
                 z.write(path, os.path.join("sotn", os.path.relpath(path, SRC)))
                 count += 1
+        z.write(os.path.join(ROOT, "apworld", "LICENSE"), os.path.join("sotn", "LICENSE"))
+        count += 1
     print(f"wrote {count} files to {out}")
 
 

@@ -25,6 +25,7 @@ def main():
     icon = os.path.join(MOD, "mod-icon.png")
     if os.path.exists(icon):
         files.append(icon)
+    files.append(os.path.join(ROOT, "LICENSE"))
     out = os.path.join(DIST, "archipelago.zip")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for path in files:

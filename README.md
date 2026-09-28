@@ -55,4 +55,5 @@ appear in your inventory right away (only during normal play, never mid-menu or 
 - SotN Archipelago map tracker: Michpem, DorkmasterFlek.
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago).
 
-This project isn't affiliated with Konami, BlackLabelHQ or the Archipelago team.
+MIT licence ([LICENSE](LICENSE)); the AP world in `apworld/` keeps Archipelago's MIT licence
+([apworld/LICENSE](apworld/LICENSE)). This project isn't affiliated with Konami, BlackLabelHQ or the Archipelago team.
