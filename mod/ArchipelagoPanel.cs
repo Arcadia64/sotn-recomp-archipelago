@@ -23,6 +23,7 @@ public sealed class ArchipelagoPanel : IPanel
     }
 
     public string Name => "Archipelago";
+    public string TitleKey => "panel.archipelago";
     public bool IsOpen { get; set; }
 
     public void Draw()

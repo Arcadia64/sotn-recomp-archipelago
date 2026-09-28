@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Host.Window;
 using RecompOne.Runtime.Modding;
@@ -8,17 +6,24 @@ namespace SotnArchipelago;
 
 public sealed class ArchipelagoMod : IMod
 {
-    const string MenuLabel = "Archipelago";
+    const string MenuKey = "menu.archipelago";
+
+    // The recomp's UI looks text up by key; register ours (English only for now).
+    const string Strings = """
+        {"strings": {
+          "menu.archipelago": {"en": "Archipelago"},
+          "panel.archipelago": {"en": "Archipelago"}
+        }}
+        """;
 
     readonly ArchipelagoPanel _panel = new();
 
     public void OnLoad()
     {
         Log.Info("loading");
-        ReportAssemblies();
-
+        Localization.Merge(Strings);
         PanelManager.Register(_panel);
-        MenuRegistry.BarItem(MenuLabel, TogglePanel).After("menu.randomizer");
+        MenuRegistry.BarItem(MenuKey, TogglePanel).After("menu.randomizer");
         Event.AddListener<VSyncEvent>(OnVSync);
     }
 
@@ -26,7 +31,7 @@ public sealed class ArchipelagoMod : IMod
     {
         ApClient.Disconnect();
         Event.RemoveListener<VSyncEvent>(OnVSync);
-        MenuRegistry.Remove(MenuLabel);
+        MenuRegistry.Remove(MenuKey);
         PanelManager.Unregister(_panel);
         Log.Info("unloaded");
     }
@@ -47,27 +52,5 @@ public sealed class ArchipelagoMod : IMod
 
         while (ApClient.TryDequeueToast(out var toast))
             ToastNotifications.ShowText(toast.Title, toast.Message);
-    }
-
-    // Mods are compiled only against assemblies the game already has loaded,
-    // so log which of the ones we plan to use are available.
-    static void ReportAssemblies()
-    {
-        string[] wanted =
-        [
-            "System.Text.Json",
-            "System.Net.WebSockets",
-            "System.Net.WebSockets.Client",
-            "System.Net.Sockets",
-            "System.Net.Security",
-            "System.Private.Uri",
-            "System.Collections",
-            "System.Collections.Concurrent",
-        ];
-        var loaded = AppDomain.CurrentDomain.GetAssemblies()
-            .Select(a => a.GetName().Name ?? "")
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in wanted)
-            Log.Info($"assembly {name}: {(loaded.Contains(name) ? "loaded" : "NOT loaded")}");
     }
 }
