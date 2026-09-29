@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, List
 from worlds.AutoWorld import World
 from worlds.Files import APTokenMixin, APTokenTypes
 from BaseClasses import Item, ItemClassification
-from .Items import tile_id_offset, relic_id_to_name, items, weapon1, shield, armor, helmet, cloak, accessory, id_to_item
+from .Items import (tile_id_offset, relic_id_to_name, items, weapon1, shield, armor, helmet, cloak, accessory, id_to_item,
+                    swap_in_powerful)
 from .Locations import locations
 from .Enemies import enemy_dict, enemy_stats_list, enemy_atk_type_list, enemy_weak_type_list
 from .data.Constants import (RELIC_NAMES, SLOT, slots, equip_id_offset, equip_inv_id_offset,
@@ -1219,9 +1220,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
             vanilla_list.append(v["vanilla_item"])
 
     if world.options.powerful_items.value:
-        while len(vanilla_list) and len(world.extra_add):
-            vanilla_list.pop(world.random.randrange(len(vanilla_list)))
-            vanilla_list.append(world.extra_add.pop(world.random.randrange(len(world.extra_add))))
+        swap_in_powerful(world.random, vanilla_list, world.extra_add)
 
     # Place no_offset locations first
     while len(offset_locations):
@@ -2155,7 +2154,7 @@ def modify_drop(drop_mod: int, patch: SotnPatchData):
         patch.write_token(APTokenTypes.WRITE, offset, (0x00000000).to_bytes(4, "little"))  # nop
     else:
         for k, enemy in enemy_dict.items():
-            if enemy in ["Stone skull", "Slime", "Large slime", "Poltergeist", "Puppet sword", "Shield", "Spear", "Ball"]:
+            if k in ["Stone skull", "Slime", "Large slime", "Poltergeist", "Puppet sword", "Shield", "Spear", "Ball"]:
                 continue
 
             if "drop_rate" in enemy:
@@ -2290,7 +2289,9 @@ def start_room_rando(castle_flag: int, world: "SotnWorld", patch: SotnPatchData)
     patch.write_token(APTokenTypes.WRITE, offset, new_write.to_bytes(4, "little"))
     offset += 4
 
-    if new_write == 0x03 or new_write == 0x05:
+    # The first castle's Catacombs or Abandoned Mine (stageWrite is the stage without the inverted castle bit,
+    # so upstream also did this for the Floating Catacombs and the Cave, changing the Mine for nothing).
+    if rand_room["stage"] in (0x03, 0x05):
         offset = 0x45f55a2  # Solve soft lock if player starts near Room 0 in Abandoned Mines
         patch.write_token(APTokenTypes.WRITE, offset, struct.pack("<B", 0x42))
         offset += 1
@@ -2436,11 +2437,17 @@ def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch
         patch.write_token(APTokenTypes.WRITE, enemy["defOffset"], new_def.to_bytes(2, "little"))
 
         if enemy["id"] == 379:
+            # His second form (enemy def 380): scaled like the rest with a difficulty or enemy_mod, random only
+            # with enemy_stats alone (upstream always rolled it).
             stat_atk = 70
-            new_atk = enemy_num_stat_rand(world, stat_atk)
-            patch.write_token(APTokenTypes.WRITE, 0x0b9c0e, new_atk.to_bytes(2, "little"))
             stat_def = 20
-            new_def = enemy_num_stat_rand(world, stat_def)
+            if new_mod != 0:
+                new_atk = int(round(new_mod * stat_atk))
+                new_def = int(round(new_mod * stat_def))
+            else:
+                new_atk = enemy_num_stat_rand(world, stat_atk)
+                new_def = enemy_num_stat_rand(world, stat_def)
+            patch.write_token(APTokenTypes.WRITE, 0x0b9c0e, new_atk.to_bytes(2, "little"))
             patch.write_token(APTokenTypes.WRITE, 0x0b9c12, new_def.to_bytes(2, "little"))
 
         if not enemy_stat:
@@ -2458,7 +2465,7 @@ def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch
             patch.write_token(APTokenTypes.WRITE, 0x0b9c16, new_weak_type.to_bytes(2, "little"))
             patch.write_token(APTokenTypes.WRITE, 0x0b9c18, new_resist_type.to_bytes(2, "little"))
 
-        res_index = (world.random.uniform(0, 1) * 10) % 2 == 0
+        res_index = world.random.random() < 0.5
         if res_index:
             offset = enemy["guardOffset"]
             new_immune_type = enemy_resist_type_stat_rand(world)
@@ -2503,9 +2510,11 @@ def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch
             new_disclosure = hex_value_to_defence_string(new_immune_type)[-2:]
             disclosure_card += new_disclosure
         disclosure_card += 'ff'
-        len_disclosure = len(disclosure_card)
-        for _ in range(len_disclosure, 24):
-            disclosure_card += '00'
+        # Each text has 12 bytes; the next enemy's starts right after. Upstream padded with (24 - hex digits)
+        # bytes instead, running 1-3 bytes into the next text.
+        if len(disclosure_card) > 24:
+            disclosure_card = disclosure_card[:22] + 'ff'
+        disclosure_card = disclosure_card.ljust(24, '0')
         offset = enemy["newNameText"]
         for i in range(0, len(disclosure_card), 2):
             two_chars_str = '0x' + disclosure_card[i:i+2]
@@ -3318,13 +3327,19 @@ def bytes_as_items(byte1: int, byte2: int, byte3: int) -> tuple:
     return item1, item2
 
 
+START_GEAR_EXCLUDED = {"Spike breaker", "Holy glasses", "Gold ring", "Silver ring"}  # progression
+
+
 def randomize_starting_equipment(world: "SotnWorld", patch: SotnPatchData):
-    rng_weapon = world.random.choice(list(weapon1.items()))
-    rng_shield = world.random.choice(list(shield.items()))
-    rng_armor = world.random.choice(list(armor.items()))
-    rng_cloak = world.random.choice(list(cloak.items()))
-    rng_helmet = world.random.choice(list(helmet.items()))
-    rng_other = world.random.choice(list(accessory.items()))
+    def pick(table):
+        return world.random.choice([entry for entry in table.items() if entry[0] not in START_GEAR_EXCLUDED])
+
+    rng_weapon = pick(weapon1)
+    rng_shield = pick(shield)
+    rng_armor = pick(armor)
+    rng_cloak = pick(cloak)
+    rng_helmet = pick(helmet)
+    rng_other = pick(accessory)
 
     # Their values when equipped
     weapon_equip_val = rng_weapon[1]["id"]

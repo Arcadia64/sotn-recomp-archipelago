@@ -830,7 +830,7 @@ start_room_data = {
         "roomWrite":  0x00410058,
         "stageWrite":  0x0005
     },
-    "58comment": {
+    "58": {
         "stage":  0x26,
         "room":  7,
         "xPos":  204,

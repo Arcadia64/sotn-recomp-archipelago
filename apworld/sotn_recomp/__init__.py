@@ -5,7 +5,7 @@ from worlds.AutoWorld import WebWorld, World
 from BaseClasses import Tutorial, MultiWorld, ItemClassification, Item
 from Options import AssembleOptions
 
-from .Items import SotnItem, items, relic_table, item_id_to_name
+from .Items import SotnItem, items, relic_table, item_id_to_name, JUNK_ITEMS, swap_in_powerful
 from .Locations import locations, SotnLocation
 from .Regions import create_regions, create_regions_no_logic
 from .Rules import set_rules, set_no_logic_rules
@@ -125,9 +125,7 @@ class SotnWorld(World):
             vanilla_list.remove(added)
 
         if self.options.powerful_items.value:
-            while len(vanilla_list) and len(self.extra_add):
-                vanilla_list.pop(self.random.randrange(len(vanilla_list)))
-                vanilla_list.append(self.extra_add.pop(self.random.randrange(len(self.extra_add))))
+            swap_in_powerful(self.random, vanilla_list, self.extra_add)
 
         for item in vanilla_list:
             itempool += [self.create_item(item)]
@@ -182,10 +180,11 @@ class SotnWorld(World):
         self.multiworld.itempool += itempool
 
     def create_random_junk(self) -> SotnItem:
-        junk_list = ["Orange", "Apple", "Banana", "Grapes", "Strawberry", "Pineapple", "Peanuts", "Toadstool"]
-        rng_junk = self.random.choice(junk_list)
-        data = items[rng_junk]
-        return SotnItem(rng_junk, data["classification"], data["id"], self.player)
+        return self.create_item(self.get_filler_item_name())
+
+    def get_filler_item_name(self) -> str:
+        # Also what AP fills with (start_inventory_from_pool, item links): never a token or an event.
+        return self.random.choice(JUNK_ITEMS)
 
     def create_regions(self) -> None:
         if self.options.no_logic.value:
@@ -202,8 +201,10 @@ class SotnWorld(World):
         else:
             set_rules(self.multiworld, self.player, self.options)
 
-    def post_fill(self) -> None:
-        # The game changes, worked out once (with this world's random rolls) for fill_slot_data.
+    def pre_output(self) -> None:
+        # The game changes, worked out once (with this world's random rolls) for fill_slot_data. Not in
+        # post_fill: progression balancing runs after that and can still move items, and the mod takes this
+        # world's own items from these writes (the server doesn't send a player their own items).
         self.sotn_patch = SotnPatchData()
         write_tokens(self, self.sotn_patch)
 

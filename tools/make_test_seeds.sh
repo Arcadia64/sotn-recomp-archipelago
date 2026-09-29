@@ -77,12 +77,14 @@ EOF
   for f in "$1"/*.yaml; do sed -i "s/GAME/$2/g" "$f"; done
 }
 
-generate() { # $1 = player files, $2 = output folder, then extra environment settings
-  local players_dir="$1" output="$2"
-  shift 2
+# The fork's seeds go through progression balancing (on by default in Archipelago): its game data must come
+# from the placement after it (pre_output).
+generate() { # $1 = player files, $2 = output folder, $3 = extra Generate.py flags, then extra environment settings
+  local players_dir="$1" output="$2" flags="$3"
+  shift 3
   rm -f "$output"/*
   for s in "${seeds[@]}"; do
-    (cd "$ap" && env PYTHONUNBUFFERED=1 "$@" .venv/Scripts/python Generate.py --skip_prog_balancing \
+    (cd "$ap" && env PYTHONUNBUFFERED=1 "$@" .venv/Scripts/python Generate.py $flags \
         --player_files_path "$players_dir" --outputpath "$output" --seed "$s" < /dev/null 2>&1 \
       | grep -E "Traceback|Error" || true)
   done
@@ -96,5 +98,5 @@ cp "$root/ref/ap-world/apworld-b08161/sotn.apworld" "$ap/custom_worlds/sotn.apwo
 py -3.12 "$root/tools/build_apworld.py" > /dev/null
 cp "$root/dist/sotn_recomp.apworld" "$ap/custom_worlds/sotn_recomp.apworld"
 
-generate "$players/stock" "$out/stock"
-generate "$players/fork" "$out/fork" SOTN_RECOMP_DEBUG_TOKENS=1
+generate "$players/stock" "$out/stock" --skip_prog_balancing
+generate "$players/fork" "$out/fork" "" SOTN_RECOMP_DEBUG_TOKENS=1

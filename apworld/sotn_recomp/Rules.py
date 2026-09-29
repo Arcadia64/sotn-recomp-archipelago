@@ -1,8 +1,7 @@
-from worlds.generic.Rules import forbid_item, set_rule, add_rule
+from worlds.generic.Rules import forbid_item, set_rule, add_rule, add_item_rule
 from BaseClasses import MultiWorld, CollectionState
 
-from .Locations import ABREV_TO_LOCATION, ENEMY_LOCATIONS
-from .Items import progression_items
+from .Locations import ABREV_TO_LOCATION, ENEMY_LOCATIONS, locations as LOCATIONS
 from .Options import SOTNOptions
 from .data.Constants import EXTENSIONS, RELIC_NAMES
 
@@ -49,6 +48,27 @@ def sotn_has_spike(state: CollectionState, player: int) -> bool:
             (state.has("Spike breaker", player) and sotn_has_any(state, player)))
 
 
+# Spots whose item can be left behind for good: a boss's drop is gone once you leave the room (the boss
+# doesn't come back), and an item that falls out of a breakable wall or vase ("despawn") can be missed.
+# Where the check is sent when the boss dies or the wall breaks, another player's item there is safe, but one
+# of this player's own has to be picked up; where it's sent on pickup, nobody's is safe. Progression there
+# could make a seed unbeatable.
+MISSABLE_LOCATIONS = {name: bool(data.get("boss") or "break_flag" in data)
+                      for name, data in LOCATIONS.items() if data.get("boss") or data.get("despawn")}
+
+
+def forbid_missable_progression(world: MultiWorld, player: int) -> None:
+    for name, checked_before_pickup in MISSABLE_LOCATIONS.items():
+        try:
+            location = world.get_location(name, player)
+        except KeyError:
+            continue  # not in this slot's pool
+        if checked_before_pickup:
+            add_item_rule(location, lambda item: not (item.player == player and item.advancement))
+        else:
+            add_item_rule(location, lambda item: not item.advancement)
+
+
 def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     boss_locations = options.boss_locations.value
     extension = options.item_pool.value
@@ -63,11 +83,7 @@ def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> 
             for r in RELIC_NAMES:
                 forbid_item(location, r, player)
 
-    # Player might break TOP_Turkey_1 with spell and miss the loot, forbid progression items
-    if ABREV_TO_LOCATION["TOP_Turkey_1"] in EXTENSIONS[extension]:
-        location = world.get_location(ABREV_TO_LOCATION["TOP_Turkey_1"], player)
-        for k in progression_items.keys():
-            forbid_item(location, k, player)
+    forbid_missable_progression(world, player)
 
     # Vessels can be on gold ring, but cause some weird visual glitches
     location = world.get_location(ABREV_TO_LOCATION["NO4_Gold ring_10"], player)
@@ -153,11 +169,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
                 enemy = world.get_location(loc, player)
                 add_rule(enemy, lambda state: state.has("Faerie scroll", player))
 
-    # Player might break TOP_Turkey_1 with spell and miss the loot, forbid progression items
-    if ABREV_TO_LOCATION["TOP_Turkey_1"] in EXTENSIONS[extension]:
-        location = world.get_location(ABREV_TO_LOCATION["TOP_Turkey_1"], player)
-        for k in progression_items.keys():
-            forbid_item(location, k, player)
+    forbid_missable_progression(world, player)
 
     # Vessels can be on gold ring, but cause some weird visual glitches
     location = world.get_location(ABREV_TO_LOCATION["NO4_Gold ring_10"], player)

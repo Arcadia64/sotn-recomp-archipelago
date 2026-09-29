@@ -44,6 +44,10 @@ It goes straight into your inventory (or relics), with a notification, as soon a
 No. Items that fall out of a wall or vase stay on the ground until you pick them up. Another player's item there is
 sent the moment the wall breaks.
 
+A boss's drop, like a wall's item, is gone if you leave the room without it, as in the vanilla game. So that no
+game can become unbeatable that way, these spots never hold one of your own progression items (another player's
+is sent when the boss dies or the wall breaks).
+
 ## I'm stuck
 
 If you walk into the Abandoned Mine or the Center Cube without a way back out, you get a Library card. Otherwise

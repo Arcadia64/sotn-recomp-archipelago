@@ -5109,23 +5109,8 @@ io_items = [{
     "name": "$700",
     "type": "GOLD",
     "id": 8,
-    "tiles": [{
-        "zones": ["TOP"],
-        "entities": [0x22f0, 0x2860],
-        "candle": 0x60,
-    }, {
-        "zones": ["TOP"],
-        "entities": [0x2390, 0x284c],
-        "candle": 0x60,
-    }, {
-        "zones": ["RTOP"],
-        "entities": [0x1cb2, 0x1f0a],
-        "candle": 0x60,
-    }, {
-        "zones": ["RTOP"],
-        "entities": [0x1cd0, 0x1f00],
-        "candle": 0x60,
-    }]
+    # Upstream listed the TOP/RTOP Heart candles here too (the disc has hearts there): no $700 candle.
+    "tiles": []
 }, {
     "name": "$1000",
     "type": "GOLD",
@@ -5164,11 +5149,8 @@ io_items = [{
     "name": "$5000",
     "type": "GOLD",
     "id": 11,
-    "tiles": [{
-        "zones": ["CAT"],
-        "entities": [0x2e0a, 0x36ea],
-        "candle": 0x10,
-    }]
+    # Upstream listed the CAT $1 candle here too (the disc has $1 there): no $5000 candle.
+    "tiles": []
 }, {
     "name": "Dagger",
     "type": "SUBWEAPON",

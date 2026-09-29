@@ -1,6 +1,17 @@
 from BaseClasses import ItemClassification, Item
 from .data.Constants import GAME_NAME
 
+# Filler: what's left over in the pool, and what Archipelago asks for.
+JUNK_ITEMS = ["Orange", "Apple", "Banana", "Grapes", "Strawberry", "Pineapple", "Peanuts", "Toadstool"]
+
+
+def swap_in_powerful(random, pool: list, extra: list) -> None:
+    """powerful_items: puts the extra items in place of random entries of the pool, as many as fit, each in
+    a different entry. What doesn't fit stays in extra (the spots outside the item pool get it)."""
+    count = min(len(pool), len(extra))
+    for index in random.sample(range(len(pool)), count):
+        pool[index] = extra.pop(random.randrange(len(extra)))
+
 tile_id_offset = 0X80
 
 

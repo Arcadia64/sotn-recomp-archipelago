@@ -316,7 +316,7 @@ class RandomizeCandles(Choice):
 @dataclass
 class SOTNOptions(PerGameCommonOptions):
     accessibility: ItemsAccessibility
-    start_inventory: StartInventoryPool
+    start_inventory_from_pool: StartInventoryPool
     open_no4: OpenedNO4NO3
     open_are: OpenedDAIARE
     item_pool: Extension
