@@ -11,7 +11,7 @@ namespace SotnArchipelago;
 // joining...) with filters, the hints for this slot, and a line to chat or send commands (!hint, !release...).
 public sealed class MessagesPanel : IPanel
 {
-    public string Name => "Archipelago messages";
+    public string Name => "Archipelago text client";
     public string TitleKey => "panel.archipelago.messages";
     public bool IsOpen { get; set; }
 
@@ -214,7 +214,7 @@ public sealed class MessagesPanel : IPanel
             .OrderBy(h => h.Found).ThenByDescending(h => h.Status).ToList();
         if (hints.Count == 0)
         {
-            ImGui.TextDisabled(ApClient.HasSeed ? "No hints yet. Type !hint <item> in Messages to ask for one." : "Connect to see hints.");
+            ImGui.TextDisabled(ApClient.HasSeed ? "No hints yet. Type !hint <item> on the Messages tab to ask for one." : "Connect to see hints.");
             return;
         }
 

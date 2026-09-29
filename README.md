@@ -59,7 +59,7 @@ their title bar onto it):
 - **Items**: your relics, relics of Vlad, key items, familiar cards and vessels, with where each came from (or
   where a hint says it is), and what you still need for Dracula; with "All items", every weapon, armor,
   accessory and usable item too, each kind in its own section.
-- **Messages**: Archipelago's text client: chat, items found and sent, hints and server messages, each kind
+- **Text client**: as in Archipelago's own Text Client: chat, items found and sent, hints and server messages, each kind
   shown or hidden, a table of your hints, and a line to chat or send commands (`!hint`, `!release`...). The
   game ignores the keyboard while you type there.
 

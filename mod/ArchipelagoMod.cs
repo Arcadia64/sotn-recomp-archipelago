@@ -17,12 +17,12 @@ public sealed class ArchipelagoMod : IMod
           "menu.archipelago.connection": {"en": "Connection"},
           "menu.archipelago.map": {"en": "Map"},
           "menu.archipelago.items": {"en": "Items"},
-          "menu.archipelago.messages": {"en": "Messages"},
+          "menu.archipelago.messages": {"en": "Text client"},
           "menu.archipelago.options": {"en": "Show window options"},
           "panel.archipelago": {"en": "Archipelago"},
           "panel.archipelago.map": {"en": "Archipelago map"},
           "panel.archipelago.items": {"en": "Archipelago items"},
-          "panel.archipelago.messages": {"en": "Archipelago messages"}
+          "panel.archipelago.messages": {"en": "Archipelago text client"}
         }}
         """;
 
