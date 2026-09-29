@@ -6,15 +6,20 @@ using Sotn;
 
 namespace SotnArchipelago;
 
+// The Archipelago window: connection, the seed and save at a glance, details for bug reports, and the log.
 public sealed class ArchipelagoPanel : IPanel
 {
     const string ServerKey = "Archipelago.Server";
     const string SlotKey = "Archipelago.Slot";
     const string AutoConnectKey = "Archipelago.AutoConnect";
 
+    // ImGui colours (0xAABBGGRR) for the status line.
+    const uint Green = 0xFF5AD25A, Yellow = 0xFF40C8F0, Orange = 0xFF3CA0F0, Grey = 0xFF909090, Red = 0xFF5A5AE6;
+
     string _server;
     string _slot;
     string _password = "";
+    bool _autoConnect;
     bool _autoScroll = true;
 
     public ArchipelagoPanel()
@@ -24,8 +29,6 @@ public sealed class ArchipelagoPanel : IPanel
         _slot = view.GetString(SlotKey, "");
         _autoConnect = view.GetBool(AutoConnectKey, true);
     }
-
-    bool _autoConnect;
 
     // When the game starts: connect to the last server and slot, if that's on (the password isn't kept, so a
     // room with one needs Connect by hand).
@@ -46,7 +49,7 @@ public sealed class ArchipelagoPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(480, 560), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(500, 600), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
         {
@@ -55,14 +58,40 @@ public sealed class ArchipelagoPanel : IPanel
             return;
         }
 
+        DrawStatusLine();
         DrawConnection();
-        ImGui.Separator();
-        DrawStatus();
-        ImGui.Separator();
+        if (ApClient.HasSeed)
+        {
+            ImGui.Spacing();
+            ImGui.SeparatorText("Seed");
+            DrawSeed();
+        }
+        ImGui.Spacing();
+        if (ImGui.CollapsingHeader("Details")) DrawDetails();
+        ImGui.SeparatorText("Log");
         DrawLog();
 
         IsOpen = open;
         ImGui.End();
+    }
+
+    // ---- connection ----
+
+    static void DrawStatusLine()
+    {
+        var state = ApClient.State;
+        uint colour = state switch
+        {
+            ConnectionState.Connected => Green,
+            ConnectionState.Connecting => Orange,
+            _ => ApClient.Offline ? Yellow : Grey,
+        };
+        var at = ImGui.GetCursorScreenPos();
+        float size = ImGui.GetTextLineHeight();
+        ImGui.GetWindowDrawList().AddCircleFilled(at + new Vector2(size / 2, size / 2), size / 3, colour);
+        ImGui.Dummy(new Vector2(size, size));
+        ImGui.SameLine();
+        ImGui.TextWrapped(ApClient.Status);
     }
 
     void DrawConnection()
@@ -97,37 +126,6 @@ public sealed class ArchipelagoPanel : IPanel
             RecompOne.Runtime.Runtime.View.SetBool(AutoConnectKey, _autoConnect);
             RecompOne.Runtime.Runtime.SaveView();
         }
-
-        ImGui.SameLine();
-        ImGui.TextWrapped(ApClient.Status);
-
-        if (state == ConnectionState.Connected || ApClient.Offline)
-        {
-            ImGui.Text($"Seed {ApClient.SeedName}  |  checked {ApClient.CheckedCount}/{ApClient.LocationCount}  |  scouted {ApClient.ScoutCount}");
-            if (Map != null)
-            {
-                ImGui.SameLine();
-                if (ImGui.SmallButton(Map.IsOpen ? "Hide map" : "Map")) Map.IsOpen = !Map.IsOpen;
-            }
-            ImGui.Text(SeedPlan.Ready
-                ? $"Items placed ({SeedPlan.UnsupportedCount} special spot(s) not placed yet)"
-                : "Items not placed yet (waiting for scouts)");
-
-            var m = RecompOne.Runtime.Runtime.Mem;
-            if (m != null && Game.Available)
-            {
-                var link = SaveLink.Check(m);
-                string save = link switch
-                {
-                    SaveLink.Status.ThisSeed => "linked to this seed",
-                    SaveLink.Status.OtherSeed => "FROM A DIFFERENT SEED (paused)",
-                    _ => "not linked yet (links once Alucard's game starts)",
-                };
-                ImGui.Text($"Save: {save}");
-                if (link == SaveLink.Status.ThisSeed)
-                    ImGui.Text($"Items given: {SaveLink.ReceivedCount(m)}/{ApClient.Received.Length} received, {ItemGiver.PendingDirect} direct waiting");
-            }
-        }
     }
 
     void SaveFields()
@@ -138,24 +136,62 @@ public sealed class ArchipelagoPanel : IPanel
         RecompOne.Runtime.Runtime.SaveView();
     }
 
-    public void DrawStatus()
+    // ---- the seed ----
+
+    void DrawSeed()
     {
+        ImGui.Text($"{ApClient.SlotName}, seed {ApClient.SeedName}");
+        ImGui.Text($"{ApClient.CheckedCount} of {ApClient.LocationCount} locations checked");
+        if (Map != null)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton(Map.IsOpen ? "Close map" : "Open map")) Map.IsOpen = !Map.IsOpen;
+        }
+        if (!SeedPlan.Ready) ImGui.TextDisabled("Getting the seed ready...");
+
+        var m = RecompOne.Runtime.Runtime.Mem;
+        if (m == null || !Game.Available) return;
+        switch (SaveLink.Check(m))
+        {
+            case SaveLink.Status.ThisSeed:
+                int received = ApClient.Received.Length, given = SaveLink.ReceivedCount(m), waiting = System.Math.Max(0, received - given) + ItemGiver.PendingDirect;
+                ImGui.Text(waiting > 0 ? $"Items received: {received} ({waiting} waiting to be given)" : $"Items received: {received}, all given");
+                break;
+            case SaveLink.Status.OtherSeed:
+                ImGui.TextColored(ImGui.ColorConvertU32ToFloat4(Red), "This save is from a different seed: nothing is placed, sent or received.");
+                break;
+            default:
+                ImGui.TextDisabled("The save links to this seed once Alucard's game starts.");
+                break;
+        }
+    }
+
+    // ---- details, for bug reports ----
+
+    public void DrawDetails()
+    {
+        if (ApClient.HasSeed)
+        {
+            ImGui.Text($"Slot {ApClient.Slot}, {ApClient.ScoutCount} locations scouted");
+            if (SeedPlan.Ready) ImGui.Text($"Items placed from {(SeedPlan.FromPayload ? "the seed's data" : "scouts")}; {SeedPlan.UnsupportedCount} spot(s) given directly instead");
+        }
         if (!Game.Available)
         {
             ImGui.TextDisabled("Game not running.");
             return;
         }
-
         int stage = GameWatch.StageId;
-        ImGui.Text($"State: {GameWatch.State}");
-        ImGui.Text(stage < 0 ? "Stage: none" : $"Stage: {(Stage)stage} (0x{stage:X2})  area {Game.Area}  room {Game.Room}");
+        ImGui.Text($"Game state: {GameWatch.State}");
+        ImGui.Text(stage < 0 ? "Stage: none" : $"Stage: {(Stage)stage} (0x{stage:X2}), area {Game.Area}, room {Game.Room}");
         ImGui.Checkbox("Log flag changes", ref GameWatch.Enabled);
-        if (ImGui.Checkbox("Always skip prologue (testing)", ref Prologue.SkipSetting)) Prologue.SaveSetting();
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Logs every castle flag the game changes: useful for bug reports, noisy otherwise.");
     }
+
+    // ---- log ----
 
     void DrawLog()
     {
-        if (ImGui.Button("Clear log")) Log.Clear();
+        if (ImGui.SmallButton("Clear")) Log.Clear();
         ImGui.SameLine();
         ImGui.Checkbox("Auto-scroll", ref _autoScroll);
 

@@ -46,7 +46,7 @@ public sealed class ArchipelagoMod : IMod
         Log.Info("unloaded");
     }
 
-    public void DrawSettings() => _panel.DrawStatus();
+    public void DrawSettings() => _panel.DrawDetails();
 
     void TogglePanel() => _panel.IsOpen = !_panel.IsOpen;
 

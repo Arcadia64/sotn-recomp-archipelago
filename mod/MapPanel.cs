@@ -11,10 +11,11 @@ using Sotn;
 
 namespace SotnArchipelago;
 
-// The seed's locations on the castle map: checked, reachable in logic now (green) or not yet (red), with
-// where you are and the location names on hover. The map images are the recomp's own (its Map overlay,
-// Misc > Overlays), loaded with its own loader; positions come from the game's stage data (MapData.g.cs)
-// and reachability from the seed's logic (MapLogic).
+// The seed's locations on the castle map, drawn like the pause-screen map: rooms you've explored filled in
+// the seed's map colour (map_color), the rest dark, walls from the recomp's own map images (its Map overlay,
+// loaded with its own loader). Each location is a dot: reachable in logic now, not yet, or checked; where you
+// are blinks; hovering a dot names its locations. Positions come from the game's stage data (MapData.g.cs),
+// reachability from the seed's own logic (MapLogic), explored rooms from the game's map data.
 public sealed class MapPanel : IPanel
 {
     public string Name => "Archipelago map";
@@ -27,21 +28,22 @@ public sealed class MapPanel : IPanel
     const int ReverseRowShift = 7;
 
     // ImGui colours are 0xAABBGGRR.
-    const uint InLogic = 0xFF40D040, OutOfLogic = 0xFF4040E0, NoLogic = 0xFF40C0E0, Checked = 0xFF808080;
-    const uint Outline = 0xFF101010, You = 0xFFE040E0, Background = 0xFF301810;
+    const uint InLogic = 0xFF46E05A, OutOfLogic = 0xFF4A4AE8, NoLogic = 0xFF40C8F0, Checked = 0xFF9A9A9A;
+    const uint DotOutline = 0xFF101010, Background = 0xFF140A08, UnexploredWalls = 0x55FFFFFF;
 
-    enum View { FollowMe, Normal, Reverse }
+    enum View { WhereIAm, Castle, Inverted }
+    static readonly string[] ViewNames = ["Where I am", "Castle", "Inverted castle"];
 
     const string ViewKey = "Archipelago.Map.View", CheckedKey = "Archipelago.Map.ShowChecked", ItemsKey = "Archipelago.Map.ShowItems";
     View _view;
     bool _showChecked;
     bool _showItems;
 
-    uint _normalTexture, _reverseTexture;
+    uint _castleTexture, _invertedTexture;
     bool _texturesTried;
 
-    // Locations by (reverse castle, x, y) for this connection's seed.
-    Dictionary<(bool Reverse, int X, int Y), List<long>> _spots = [];
+    // Locations by (inverted castle, x, y) for this seed.
+    Dictionary<(bool Inverted, int X, int Y), List<long>> _spots = [];
     int _spotsFor = -1;
 
     public MapPanel()
@@ -54,7 +56,7 @@ public sealed class MapPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(720, 640), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(720, 660), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
         {
@@ -69,28 +71,30 @@ public sealed class MapPanel : IPanel
         {
             RefreshSpots();
             var you = Position();
-            bool reverse = _view switch { View.Normal => false, View.Reverse => true, _ => you?.Reverse ?? false };
-            DrawToolbar();
+            bool inverted = _view switch { View.Castle => false, View.Inverted => true, _ => you?.Inverted ?? false };
+            DrawControls();
             DrawSummary();
-            DrawMap(reverse, you);
+            DrawMap(inverted, you);
         }
 
         IsOpen = open;
         ImGui.End();
     }
 
-    void DrawToolbar()
+    // ---- controls ----
+
+    void DrawControls()
     {
         int view = (int)_view;
-        bool changed = ImGui.RadioButton("Follow me", ref view, 0);
-        ImGui.SameLine();
-        changed |= ImGui.RadioButton("Castle", ref view, 1);
-        ImGui.SameLine();
-        changed |= ImGui.RadioButton("Inverted castle", ref view, 2);
+        ImGui.SetNextItemWidth(150);
+        bool changed = ImGui.Combo("##view", ref view, ViewNames, ViewNames.Length);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Which castle to show: the one you're in, or either.");
         ImGui.SameLine();
         changed |= ImGui.Checkbox("Show checked", ref _showChecked);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Also show locations you've already checked (grey).");
         ImGui.SameLine();
-        changed |= ImGui.Checkbox("Show items", ref _showItems);
+        changed |= ImGui.Checkbox("Show what's there", ref _showItems);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Spoilers: when you hover a location, say which item is there and whose it is.");
         if (!changed) return;
         _view = (View)view;
         var settings = RecompOne.Runtime.Runtime.View;
@@ -103,30 +107,53 @@ public sealed class MapPanel : IPanel
     void DrawSummary()
     {
         var reachable = MapLogic.Reachable;
-        int open = 0, inLogic = 0, enemies = 0, enemiesInLogic = 0;
+        bool logic = MapLogic.Available;
+        int left = 0, inLogic = 0, enemies = 0, enemiesInLogic = 0;
         foreach (var loc in LocationData.All)
         {
             if (!ApClient.IsMissing(loc.Id)) continue;
             bool reach = reachable.Contains(loc.Id);
-            if (loc.Kind == Detect.Enemy)
-            {
-                enemies++;
-                if (reach) enemiesInLogic++;
-            }
-            else
-            {
-                open++;
-                if (reach) inLogic++;
-            }
+            if (loc.Kind == Detect.Enemy) { enemies++; if (reach) enemiesInLogic++; }
+            else { left++; if (reach) inLogic++; }
         }
-        string text = $"Checked {ApClient.CheckedCount}/{ApClient.LocationCount}.";
-        text += MapLogic.Available ? $"  In logic now: {inLogic} of {open} left" : "  (This seed has no logic data: reachability isn't shown.)";
-        if (enemies > 0) text += MapLogic.Available ? $"; enemysanity {enemiesInLogic} of {enemies}" : $"; enemysanity {enemies} left";
-        ImGui.TextWrapped(text);
-        ImGui.TextDisabled("Green: in logic now.  Red: not yet.  Grey: checked.  Pink: you.");
+
+        ImGui.Text($"{ApClient.CheckedCount} of {ApClient.LocationCount} checked");
+        if (logic)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("|");
+            ImGui.SameLine();
+            ImGui.Text($"{inLogic} of the {left} left reachable now" + (enemies > 0 ? $"; enemies: {enemiesInLogic} of {enemies}" : ""));
+        }
+
+        Legend(logic ? InLogic : NoLogic, logic ? "Reachable now" : "Not checked");
+        if (logic) { ImGui.SameLine(); Legend(OutOfLogic, "Not yet"); }
+        if (_showChecked) { ImGui.SameLine(); Legend(Checked, "Checked"); }
+        ImGui.SameLine();
+        Legend(0xFFFFFFFF, "You are here", square: true);
+        if (!logic) ImGui.TextDisabled("This seed has no logic data, so reachability isn't shown.");
     }
 
-    void DrawMap(bool reverse, (bool Reverse, int X, int Y)? you)
+    static void Legend(uint colour, string label, bool square = false)
+    {
+        var draw = ImGui.GetWindowDrawList();
+        var at = ImGui.GetCursorScreenPos();
+        float size = ImGui.GetTextLineHeight();
+        var centre = at + new Vector2(size / 2, size / 2);
+        if (square) draw.AddRectFilled(centre - new Vector2(size / 3, size / 3), centre + new Vector2(size / 3, size / 3), colour);
+        else
+        {
+            draw.AddCircleFilled(centre, size / 3 + 1, DotOutline);
+            draw.AddCircleFilled(centre, size / 3, colour);
+        }
+        ImGui.Dummy(new Vector2(size, size));
+        ImGui.SameLine();
+        ImGui.Text(label);
+    }
+
+    // ---- the map ----
+
+    void DrawMap(bool inverted, (bool Inverted, int X, int Y)? you)
     {
         LoadTextures();
         var avail = ImGui.GetContentRegionAvail();
@@ -134,50 +161,70 @@ public sealed class MapPanel : IPanel
         var origin = ImGui.GetCursorScreenPos();
         var size = new Vector2(ImageWidth * scale, ImageHeight * scale);
         var draw = ImGui.GetWindowDrawList();
-
-        draw.AddRectFilled(origin, origin + size, Background);
-        uint texture = reverse ? _reverseTexture : _normalTexture;
-        if (texture != 0) draw.AddImage((nint)texture, origin, origin + size);
-        else draw.AddText(origin + new Vector2(8, 8), 0xFFFFFFFF, "(the recomp's castle map image couldn't be loaded)");
+        var (fill, walls) = MapColours();
 
         float cell = CellPixels * scale;
-        Vector2 CellCorner(int x, int y) =>
-            origin + new Vector2(x * cell, (y - (reverse ? ReverseRowShift : 0)) * cell - TopCut * scale);
+        int shift = inverted ? ReverseRowShift : 0;
+        Vector2 Corner(int x, int y) => origin + new Vector2(x * cell, (y - shift) * cell - TopCut * scale);
 
+        draw.AddRectFilled(origin, origin + size, Background);
+        draw.PushClipRect(origin, origin + size, true);
+
+        // Explored rooms filled; walls faint everywhere, bright where explored.
+        var explored = Explored(inverted);
+        foreach (var (x, y) in explored) draw.AddRectFilled(Corner(x, y), Corner(x, y) + new Vector2(cell, cell), fill);
+        uint texture = inverted ? _invertedTexture : _castleTexture;
+        if (texture != 0)
+        {
+            draw.AddImage((nint)texture, origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
+            foreach (var (x, y) in explored)
+            {
+                var uv0 = new Vector2(x * CellPixels / ImageWidth, ((y - shift) * CellPixels - TopCut) / ImageHeight);
+                var uv1 = uv0 + new Vector2(CellPixels / ImageWidth, CellPixels / ImageHeight);
+                draw.AddImage((nint)texture, Corner(x, y), Corner(x, y) + new Vector2(cell, cell), uv0, uv1, walls);
+            }
+        }
+        else draw.AddText(origin + new Vector2(8, 8), 0xFFFFFFFF, "(the recomp's castle map image couldn't be loaded)");
+
+        // Where you are: a blinking square, as on the pause map.
+        if (you is { } me && me.Inverted == inverted)
+        {
+            float pulse = 0.55f + 0.45f * MathF.Abs(MathF.Sin((float)ImGui.GetTime() * 4f));
+            var corner = Corner(me.X, me.Y);
+            var grow = new Vector2(MathF.Max(1f, cell * 0.15f), MathF.Max(1f, cell * 0.15f));
+            draw.AddRectFilled(corner - grow - Vector2.One, corner + new Vector2(cell, cell) + grow + Vector2.One, 0xFF000000);
+            draw.AddRectFilled(corner - grow, corner + new Vector2(cell, cell) + grow, ((uint)(pulse * 255) << 24) | 0x00FFFFFF);
+        }
+
+        // Locations.
         var reachable = MapLogic.Reachable;
         bool logic = MapLogic.Available;
         var mouse = ImGui.GetMousePos();
         bool mouseOnMap = ImGui.IsWindowHovered() && mouse.X >= origin.X && mouse.Y >= origin.Y
                           && mouse.X < origin.X + size.X && mouse.Y < origin.Y + size.Y;
         List<long>? hovered = null;
-        float radius = MathF.Max(3f, cell * 0.45f);
-
-        foreach (var ((spotReverse, x, y), ids) in _spots)
+        float radius = MathF.Max(3f, cell * 0.42f);
+        foreach (var ((spotInverted, x, y), ids) in _spots)
         {
-            if (spotReverse != reverse) continue;
+            if (spotInverted != inverted) continue;
             var open = ids.Where(ApClient.IsMissing).ToList();
             if (open.Count == 0 && !_showChecked) continue;
             uint colour = open.Count == 0 ? Checked
                 : !logic ? NoLogic
                 : open.Any(reachable.Contains) ? InLogic
                 : OutOfLogic;
-            var centre = CellCorner(x, y) + new Vector2(cell / 2, cell / 2);
-            draw.AddCircleFilled(centre, radius + 1, Outline);
+            var centre = Corner(x, y) + new Vector2(cell / 2, cell / 2);
+            draw.AddCircleFilled(centre, radius + 1.5f, DotOutline);
             draw.AddCircleFilled(centre, radius, colour);
             if (open.Count > 1 && radius >= 6)
             {
                 string count = open.Count.ToString();
-                draw.AddText(centre - ImGui.CalcTextSize(count) / 2, Outline, count);
+                draw.AddText(centre - ImGui.CalcTextSize(count) / 2, DotOutline, count);
             }
             if (mouseOnMap && Vector2.Distance(mouse, centre) <= radius + 2) hovered = ids;
         }
 
-        if (you is { } me && me.Reverse == reverse)
-        {
-            var corner = CellCorner(me.X, me.Y);
-            draw.AddRect(corner - Vector2.One, corner + new Vector2(cell + 1, cell + 1), You, 0, ImDrawFlags.None, 2f);
-        }
-
+        draw.PopClipRect();
         ImGui.Dummy(size);
         if (hovered != null) DrawTooltip(hovered, reachable, logic);
     }
@@ -208,21 +255,64 @@ public sealed class MapPanel : IPanel
         foreach (var (id, (x, y, stage)) in MapData.Cells)
         {
             if (!ApClient.IsMissing(id) && !ApClient.IsChecked(id)) continue; // not in this seed
-            var key = ((stage & ReverseStageBit) != 0, (int)x, (int)y);
+            var key = ((stage & InvertedStageBit) != 0, (int)x, (int)y);
             if (!_spots.TryGetValue(key, out var list)) _spots[key] = list = [];
             list.Add(id);
         }
     }
 
+    // ---- the game's map data ----
+
+    // Explored rooms: the pause map's own record, 2 bits per cell, 4 cells per byte, 16 bytes per row; the
+    // inverted castle's from 0x400 (DRA func_800F2014 marks a cell). Its y is the room table's (no shift).
+    const uint ExploredAddr = 0x8006BB74;
+    const uint InvertedOffset = 0x400;
+
+    static List<(int X, int Y)> Explored(bool inverted)
+    {
+        var cells = new List<(int, int)>();
+        var m = RecompOne.Runtime.Runtime.Mem;
+        if (m == null || !Game.Available) return cells;
+        uint start = ExploredAddr + (inverted ? InvertedOffset : 0);
+        for (int i = 0; i < 64 * 16; i++)
+        {
+            int bits = m.ReadU8(start + (uint)i);
+            if (bits == 0) continue;
+            for (int k = 0; k < 4; k++)
+                if ((bits >> ((3 - k) * 2) & 3) != 0) cells.Add(((i & 15) * 4 + k, i >> 4));
+        }
+        return cells;
+    }
+
+    // The seed's map colours (map_color; Rom.py map_color writes these PlayStation colours): room fill and
+    // walls. Walls tint the recomp's grey outlines, so vanilla's grey is white here.
+    static readonly ushort[] FillColours = [0xFDCA, 0xB000, 0x0050, 0x80CA, 0x0900, 0xE318, 0xB008, 0xFF1F, 0x1000, 0x0000];
+    const ushort VanillaWalls = 0xE318;
+
+    static (uint Fill, uint Walls) MapColours()
+    {
+        int option = ApClient.OptionInt("map_color");
+        ushort fill = option >= 0 && option < FillColours.Length ? FillColours[option] : FillColours[0];
+        if (fill == 0) fill = 0x1084; // "invisible": still tell explored rooms apart here, just barely
+        ushort walls = option switch { 5 => 0xFFFF, 7 => 0xFD0F, _ => VanillaWalls };
+        return (Abgr(fill, 1f), walls == VanillaWalls ? 0xFFFFFFFF : Abgr(walls, 255f / 197f));
+    }
+
+    static uint Abgr(ushort psx, float boost)
+    {
+        uint Channel(int shift) => (uint)Math.Min(255f, ((psx >> shift) & 31) * 255f / 31f * boost);
+        return 0xFF000000 | Channel(10) << 16 | Channel(5) << 8 | Channel(0);
+    }
+
     // ---- where you are (as the recomp's MapOverlayPanel works it out) ----
 
-    const int ReverseStageBit = 0x20;
+    const int InvertedStageBit = 0x20;
     const uint StageAddr = 0x800974A0, RoomLeftAddr = 0x800730B0, RoomTopAddr = 0x800730B4;
     const uint CameraXAddr = 0x800973F0, CameraYAddr = 0x800973F4;
     const uint PlayerStepAddr = 0x80073404, PlayStateAddr = 0x80073060, MapModeAddr = 0x8003C9A4, WarpingAddr = 0x80097C98;
     const int PrologueStage = 0x1F, EntranceFirstVisit = 0x41, CutsceneStage = 0x38;
 
-    static (bool Reverse, int X, int Y)? Position()
+    static (bool Inverted, int X, int Y)? Position()
     {
         var m = RecompOne.Runtime.Runtime.Mem;
         if (m == null || !Game.Available) return null;
@@ -234,7 +324,7 @@ public sealed class MapPanel : IPanel
         if (m.ReadU8(PlayerStepAddr) == 0x12 || m.ReadU8(PlayStateAddr) != 3 || m.ReadU8(MapModeAddr) != 1
             || m.ReadU8(WarpingAddr) != 0) return null;
         if (x < 0 || x >= 64 || y < 0 || y >= 64) return null;
-        return ((stage & ReverseStageBit) != 0, x, y);
+        return ((stage & InvertedStageBit) != 0, x, y);
     }
 
     // ---- the recomp's castle map images ----
@@ -243,8 +333,8 @@ public sealed class MapPanel : IPanel
     {
         if (_texturesTried) return;
         _texturesTried = true;
-        _normalTexture = LoadRecompMap("Castle1");
-        _reverseTexture = LoadRecompMap("Castle2");
+        _castleTexture = LoadRecompMap("Castle1");
+        _invertedTexture = LoadRecompMap("Castle2");
     }
 
     // Recompiled.MapOverlayPanel.LoadTexture(name): reads the image embedded in the game and uploads it.
