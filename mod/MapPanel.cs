@@ -351,9 +351,12 @@ public sealed class MapPanel : IPanel
     const int InvertedStageBit = 0x20;
     const uint StageAddr = 0x800974A0, RoomLeftAddr = 0x800730B0, RoomTopAddr = 0x800730B4;
     const uint CameraXAddr = 0x800973F0, CameraYAddr = 0x800973F4;
-    const uint PlayerStepAddr = 0x80073404, PlayStateAddr = 0x80073060, MapModeAddr = 0x8003C9A4, WarpingAddr = 0x80097C98;
+    const uint PlayerStepAddr = 0x80073404, PlayStateAddr = 0x80073060, MapModeAddr = 0x8003C9A4;
     const int PrologueStage = 0x1F, EntranceFirstVisit = 0x41, CutsceneStage = 0x38;
 
+    // Unlike the recomp's map, not skipped while D_80097C98 is set: a warp room sets it (2) and the game only
+    // clears it at the next room change, so after a warp the position would stay on the old room until you
+    // left the new one. The room's position is right by then; the load itself is excluded by the engine step.
     static (bool Inverted, int X, int Y)? Position()
     {
         var m = RecompOne.Runtime.Runtime.Mem;
@@ -363,8 +366,7 @@ public sealed class MapPanel : IPanel
         int y = m.ReadU8(RoomTopAddr) + m.ReadU16(CameraYAddr) / 256;
         if (stage == PrologueStage || stage == CutsceneStage) return null;
         if (stage == EntranceFirstVisit && (y > 41 || x < 2)) return null; // the prologue's part of the entrance
-        if (m.ReadU8(PlayerStepAddr) == 0x12 || m.ReadU8(PlayStateAddr) != 3 || m.ReadU8(MapModeAddr) != 1
-            || m.ReadU8(WarpingAddr) != 0) return null;
+        if (m.ReadU8(PlayerStepAddr) == 0x12 || m.ReadU8(PlayStateAddr) != 3 || m.ReadU8(MapModeAddr) != 1) return null;
         if (x < 0 || x >= 64 || y < 0 || y >= 64) return null;
         return ((stage & InvertedStageBit) != 0, x, y);
     }
