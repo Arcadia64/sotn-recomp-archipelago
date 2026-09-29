@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Memory;
@@ -262,7 +263,7 @@ static class ApLook
             _savedDesc = m.ReadU32(def + 4);
             WriteCornerText(m, ShopNameBuffer, Describe(scout, ShopNameGlyphs));
             string player = scout is { } s ? Clean(ApClient.PlayerName(s.Player)) : "";
-            WriteAscii(m, ShopDescBuffer, $"Archipelago item for {player}", ShopDescChars);
+            WriteAscii(m, ShopDescBuffer, player.Length > 0 ? $"Archipelago item for {player}" : "Archipelago item", ShopDescChars);
             m.WriteU32(def, ShopNameBuffer);
             m.WriteU32(def + 4, ShopDescBuffer);
         }
@@ -326,21 +327,35 @@ static class ApLook
         if (scout is not { } s) return "Archipelago item";
         string player = Clean(ApClient.PlayerName(s.Player));
         string item = Clean(ApClient.ItemName(s.Item, s.Player));
+        if (item.Length == 0) item = "Archipelago item";
+        if (player.Length == 0) return item.Length <= max ? item : item[..max]; // no letters we can show
         string text = $"{player}'s {item}";
         if (text.Length <= max) return text;
         // Keep the item name whole where possible; shorten the player name first.
         int room = max - item.Length - 3;
-        if (room >= 3) return $"{player[..System.Math.Min(player.Length, room)]}'s {item}";
-        return item.Length <= max ? item : item[..max];
+        if (room >= 3) return $"{player[..System.Math.Min(player.Length, room)].TrimEnd()}'s {item}";
+        return item.Length <= max ? item : item[..max].TrimEnd();
     }
 
-    // Glyphs proven by vanilla item names; anything else becomes a space.
+    // Glyphs proven by vanilla item names. Accents are dropped (é -> e), '&' becomes "and", curly
+    // apostrophes straight ones; anything else (other punctuation, other scripts) becomes a space, and
+    // runs of spaces collapse. A name with nothing left comes back empty; the callers handle that.
     static string Clean(string s)
     {
         var sb = new StringBuilder(s.Length);
-        foreach (char ch in s)
-            sb.Append(ch is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or (>= '0' and <= '9') or ' ' or '-' or '.' or '\'' ? ch : ' ');
-        return sb.ToString().Trim();
+        foreach (char ch in s.Normalize(NormalizationForm.FormD))
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark) continue;
+            string add = ch switch
+            {
+                (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-' or '.' or '\'' => ch.ToString(),
+                '‘' or '’' => "'",
+                '&' => " and ",
+                _ => " ",
+            };
+            sb.Append(add);
+        }
+        return string.Join(' ', sb.ToString().Split(' ', System.StringSplitOptions.RemoveEmptyEntries));
     }
 
     // Bottom corner text: one byte per glyph = ASCII - 0x20 (space = 0), ended by FF 00.
