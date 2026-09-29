@@ -12,6 +12,7 @@ from .Rules import set_rules, set_no_logic_rules
 from .Options import SOTNOptions, sotn_option_groups
 from .Rom import SotnPatchData, write_tokens
 from .Recomp import recomp_payload
+from .Logic import export_logic
 from .Groups import ITEM_GROUPS, LOCATION_GROUPS
 from .data.Constants import GAME_NAME
 
@@ -212,6 +213,8 @@ class SotnWorld(World):
         slot_data = self.options.as_dict(*option_names)
         # The patch's writes for the SymphonyRecomp mod, which applies them to RAM as files load.
         slot_data["recomp"] = recomp_payload(self.sotn_patch)
+        # The logic as data, for the mod's map (Logic.py).
+        slot_data["recomp"]["logic"] = export_logic(self.multiworld, self.player)
         return slot_data
 
     def generate_output(self, output_directory: str) -> None:

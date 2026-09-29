@@ -14,17 +14,21 @@ public sealed class ArchipelagoMod : IMod
     const string Strings = """
         {"strings": {
           "menu.archipelago": {"en": "Archipelago"},
-          "panel.archipelago": {"en": "Archipelago"}
+          "panel.archipelago": {"en": "Archipelago"},
+          "panel.archipelago.map": {"en": "Archipelago map"}
         }}
         """;
 
     readonly ArchipelagoPanel _panel = new();
+    readonly MapPanel _map = new();
 
     public void OnLoad()
     {
         Log.Info("loading");
         Localization.Merge(Strings);
         PanelManager.Register(_panel);
+        PanelManager.Register(_map);
+        _panel.Map = _map;
         AddBarItem(MenuKey, TogglePanel);
         Event.AddListener<VSyncEvent>(OnVSync);
     }
@@ -35,6 +39,7 @@ public sealed class ArchipelagoMod : IMod
         Event.RemoveListener<VSyncEvent>(OnVSync);
         MenuRegistry.Remove(MenuKey);
         RemovePanel(_panel);
+        RemovePanel(_map);
         Log.Info("unloaded");
     }
 

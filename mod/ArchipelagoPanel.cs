@@ -1,3 +1,4 @@
+#nullable enable
 using System.Numerics;
 using ImGuiNET;
 using RecompOne.Runtime.Host.Window;
@@ -21,6 +22,9 @@ public sealed class ArchipelagoPanel : IPanel
         _server = view.GetString(ServerKey, "archipelago.gg:38281");
         _slot = view.GetString(SlotKey, "");
     }
+
+    // The map window (ArchipelagoMod registers both), opened from here.
+    public MapPanel? Map { get; set; }
 
     public string Name => "Archipelago";
     public string TitleKey => "panel.archipelago";
@@ -80,6 +84,11 @@ public sealed class ArchipelagoPanel : IPanel
         if (state == ConnectionState.Connected)
         {
             ImGui.Text($"Seed {ApClient.SeedName}  |  checked {ApClient.CheckedCount}/{ApClient.LocationCount}  |  scouted {ApClient.ScoutCount}");
+            if (Map != null)
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton(Map.IsOpen ? "Hide map" : "Map")) Map.IsOpen = !Map.IsOpen;
+            }
             ImGui.Text(SeedPlan.Ready
                 ? $"Items placed ({SeedPlan.UnsupportedCount} special spot(s) not placed yet)"
                 : "Items not placed yet (waiting for scouts)");

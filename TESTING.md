@@ -69,5 +69,7 @@ From the project folder, with the Archipelago venv (they need the game built for
 ```powershell
 dotnet build tools\modcheck                                                      # mod compiles against the game
 ref\archipelago\.venv\Scripts\python.exe tools\verify_placement.py <seed zip> 1  # placement vs the AP patch
-ref\archipelago\.venv\Scripts\python.exe tools\verify_payload.py <seed zip>      # slot_data payload vs the AP patch
+ref\archipelago\.venv\Scripts\python.exe tools\verify_payload.py <seed zip>      # slot_data payload vs the world's writes
+ref\archipelago\.venv\Scripts\python.exe tools\verify_logic.py                   # map logic export vs Archipelago's own
+py -3.12 tools\check_hooks.py [--game <folder>]                                   # every hook names a real function
 ```

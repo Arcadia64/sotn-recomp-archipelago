@@ -37,7 +37,9 @@ The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works 
 Items for other players look like a round **AP** badge coloured by importance: gold for progression, blue for
 useful, grey for filler, red for traps. Picking one up shows whose item it is. Items you receive pop up and
 appear in your inventory right away (only during normal play, never mid-menu or mid-cutscene). The
-**Archipelago** window has the connection status and a colour-coded log.
+**Archipelago** window has the connection status and a colour-coded log, and its **Map** button opens a map of
+your seed's locations: green where you can go now in logic, red not yet, grey checked, with your position
+and the location names (and, if you like, what's there) on hover.
 
 ## For developers
 

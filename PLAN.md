@@ -38,17 +38,20 @@ Built, verified offline or by reading the code, not yet seen in game:
 - Items that fall out of walls/vases (Locations.py `despawn`) don't vanish before they're picked up
   (`DespawnDrops.cs`, hooks generated per stage). Other players' floor items already sent (picked up before
   a death or reload, or `!collect`ed) don't appear again (`CheckTracker.HideSentItems`).
+- Map window (`MapPanel.cs`): the recomp's castle map images, every location of the seed at its map cell
+  (`MapData.g.cs`, from the stage room and layout data, `tools/map_positions.py`), coloured by the seed's
+  own logic (`apworld/sotn_recomp/Logic.py` exports it into slot_data; `MapLogic.cs` searches it;
+  `tools/verify_logic.py`: 0 differences from Archipelago's reachability over 2,400 random item sets).
 - Every AP option that changes the game, including the ones the recomp can't take from the patch bytes
   alone (`OptionHooks.cs`, `OptionData.g.cs`, graphics/SEL/RIC payload keys): see the status table in
   `docs/research/options-audit.md`. Offline: payload equals the patch for every file, all 189 hooks
   resolve (`tools/check_hooks.py`).
 
 Next:
-1. Archipelago map window in the mod (in progress): the recomp's castle map images and position code, every
-   location of the seed as a dot (checked / reachable / not yet), names on hover. Needs each location's map
-   position (from the game's room data, in the generator) and the AP logic ported to C#.
-2. In-game test pass of everything in the "not yet seen in game" list. For the despawn fix, check the two
+1. In-game test pass of everything in the "not yet seen in game" list. For the despawn fix, check the two
    Castle Keep spots (a ledge wall and a vase, detected by pickup, not by wall flag) as well as the walls.
+2. Map window, next steps: dim rooms not explored yet (the game's own map data), markers on the pause-screen
+   map itself.
 3. Tracker PR (location 394, enemysanity 400-540).
 
 Decided: BizHawk isn't supported. The AP world is its own game, "Symphony of the Night (Recomp)"
