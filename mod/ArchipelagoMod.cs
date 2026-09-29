@@ -82,6 +82,7 @@ public sealed class ArchipelagoMod : IMod
         SeedPlan.Update();
         CheckTracker.Tick(e.Memory, e.Frame);
         ItemGiver.Tick(e.Memory, e.Frame);
+        CheckTracker.TickGoal(e.Memory);
         while (ApClient.TryDequeueDeath(out var cause)) GameRules.OnDeathLink(cause);
         GameRules.Tick(e.Memory, e.Frame);
         Fixes.Tick(e.Memory);

@@ -28,20 +28,26 @@ static class ItemGiver
     const long FirstBodyItem = 169;
 
     static readonly Queue<(long Item, string Why)> _direct = new();
+    static string _directFor = "";   // the seed the queued direct items belong to (ApClient.SeedIdentity)
     static long _lastGrantFrame;
     static long _waitingSince = -1;
     static long _lastStuckReport = -1;
 
     public static int PendingDirect => _direct.Count;
 
-    public static void QueueDirect(long item, string why) => _direct.Enqueue((item, why));
-
-    public static void ClearDirect() => _direct.Clear();
+    public static void QueueDirect(long item, string why)
+    {
+        string seed = ApClient.SeedIdentity;
+        if (seed != _directFor) _direct.Clear();
+        _directFor = seed;
+        _direct.Enqueue((item, why));
+    }
 
     public static void Tick(IMemory m, long frame)
     {
         if (!ApClient.HasSeed) return; // offline: the items received so far, from the seed cache
         if (frame - _lastGrantFrame < GrantInterval) return;
+        if (_direct.Count > 0 && ApClient.SeedIdentity != _directFor) _direct.Clear(); // another seed now
 
         var received = ApClient.Received;
         bool pending = _direct.Count > 0 || SaveLink.ReceivedCount(m) < received.Length || OwedItems.Next(m) != null;

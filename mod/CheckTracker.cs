@@ -30,17 +30,17 @@ static class CheckTracker
     const ushort DraculaRoom = 0x6CE0;
     const int ShaftDraculaStage = 0x38;
 
-    static bool _goalSent;
+    // Saved with the game once Dracula is beaten: CF[0xFB] bit 5 (OwedItems uses 0xFA-0xFB bits 0-4,
+    // ApLook bit 7).
+    const uint GoalFlagAddr = Progress.CastleFlagsAddr + 0xFB;
+    const byte GoalBit = 0x20;
+
     static bool _warnedOtherSeed;
     static long _otherSeedWarnedAt;
     const long OtherSeedWarningEvery = 60 * 60;
     const float OtherSeedWarningSeconds = 15f;
 
-    public static void Reset()
-    {
-        _goalSent = false;
-        _warnedOtherSeed = false;
-    }
+    public static void Reset() => _warnedOtherSeed = false;
 
     public static void Tick(IMemory m, long frame)
     {
@@ -94,8 +94,6 @@ static class CheckTracker
             }
             ApClient.SendChecks(found);
         }
-
-        CheckGoal(m);
     }
 
     // Another player's item that has already been sent (picked up before a death or reload, or taken
@@ -150,7 +148,7 @@ static class CheckTracker
             case Detect.Break:
                 return (m.ReadU8(loc.Addresses[0]) & loc.Mask) != 0;
             case Detect.KillTime:
-                return m.ReadU16(loc.Addresses[0]) != 0;
+                return m.ReadU32(loc.Addresses[0]) != 0;
             case Detect.Enemy:
                 if (ApClient.OptionInt("enemysanity") == 0) return false;
                 if (ApClient.OptionInt("enemy_scroll") != 0 && (m.ReadU8(RelicBase + FaerieScrollRelic) & 1) == 0) return false;
@@ -160,18 +158,31 @@ static class CheckTracker
         }
     }
 
-    static void CheckGoal(IMemory m)
+    // Every frame, before DeathLink (a death arriving as Dracula falls would otherwise cost the goal). Once
+    // reached, it's in the save and the seed cache (ApClient.ReachGoal): sent now if connected, else on the
+    // next connection, so going offline or closing the game during the ending can't lose it.
+    public static void TickGoal(IMemory m)
     {
-        if (_goalSent) return;
-        if (m.ReadU8(Game.StageIdAddr) != ShaftDraculaStage) return;
-        if (m.ReadU16(RoomFingerprintAddr) != DraculaRoom) return;
-        ushort draculaHp = m.ReadU16(DraculaHpAddr);
-        if (draculaHp != 0 && draculaHp <= 60000) return;
-        if (m.ReadU32(AlucardHpAddr) == 0) return;
-        if (m.ReadU8(DemoTimerAddr) == 4) return;
+        if (!ApClient.HasSeed || SaveLink.Check(m) != SaveLink.Status.ThisSeed) return;
+        if (!GoalReached(m))
+        {
+            if (!DraculaDefeated(m)) return;
+            m.WriteU8(GoalFlagAddr, (byte)(m.ReadU8(GoalFlagAddr) | GoalBit));
+            Log.Info("goal reached: Dracula defeated");
+        }
+        ApClient.ReachGoal();
+    }
 
-        _goalSent = true;
-        Log.Info("goal reached: Dracula defeated");
-        ApClient.SendGoal();
+    public static bool GoalReached(IMemory m) => (m.ReadU8(GoalFlagAddr) & GoalBit) != 0;
+
+    static bool DraculaDefeated(IMemory m)
+    {
+        if (m.ReadU8(Game.GameStateAddr) != (byte)GameState.Play) return false;
+        if (m.ReadU8(Game.StageIdAddr) != ShaftDraculaStage) return false;
+        if (m.ReadU16(RoomFingerprintAddr) != DraculaRoom) return false;
+        ushort draculaHp = m.ReadU16(DraculaHpAddr);
+        if (draculaHp != 0 && draculaHp <= 60000) return false;
+        if (m.ReadU32(AlucardHpAddr) == 0) return false;
+        return m.ReadU8(DemoTimerAddr) != 4;
     }
 }

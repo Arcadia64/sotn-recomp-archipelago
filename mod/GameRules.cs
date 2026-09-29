@@ -20,7 +20,9 @@ static class GameRules
     const uint MpAddr = 0x80097BB0;
     const uint MpMaxAddr = 0x80097BB4;
     const uint PlayerStepAddr = 0x80073404;     // PLAYER.step: 16 = dying, 17 = fairy revive
-    const byte PlayerStepDying = 0x10;
+    const uint PlayerStepSubAddr = 0x80073406;  // PLAYER.step_s
+    const ushort PlayerStepDying = 0x10;
+    const uint DemoTimerAddr = 0x80072EFC;      // frames a cutscene still plays input for Alucard (0 = none)
     const uint RoomFingerprintAddr = 0x80073084;
     const uint RelicBase = 0x80097964;
     const int LibraryCard = 166;                // hand item
@@ -77,23 +79,27 @@ static class GameRules
 
     static void ApplyDeathLink(IMemory m, long frame)
     {
-        if (_pendingDeath == null || ApClient.OptionInt("death_link") == 0) { _pendingDeath = null; return; }
+        if (_pendingDeath == null || ApClient.OptionInt("death_link") == 0 || CheckTracker.GoalReached(m)) { _pendingDeath = null; return; }
         if (!SafeToKill(m)) return;
 
         Log.Info($"DeathLink: {_pendingDeath}");
         ApClient.ShowToast("DeathLink", _pendingDeath);
+        // As the game's own instant death (Player.InstantDeath): the dying step from its start. Only the
+        // step, with step_s left where it was, can leave Alucard frozen.
         m.WriteU32(HpAddr, 0);
-        m.WriteU8(PlayerStepAddr, PlayerStepDying);
+        m.WriteU16(PlayerStepAddr, PlayerStepDying);
+        m.WriteU16(PlayerStepSubAddr, 0);
         _killedByLinkAt = frame;
         _pendingDeath = null;
     }
 
     // Normal play only: never mid-transformation (the BizHawk client soft-locks when killed mid wing
-    // smash), in a menu, during a room transition or while already dying.
+    // smash), in a menu, during a room transition or a cutscene, or while already dying.
     static bool SafeToKill(IMemory m)
     {
         if (m.ReadU8(ItemGiver.EngineStepAddr) != ItemGiver.EngineNormal) return false;
         if (m.ReadU8(Game.MenuOpenAddr) != 0 || m.ReadU8(Game.MapOpenAddr) != 0) return false;
+        if (m.ReadU16(DemoTimerAddr) != 0) return false;
         if (m.ReadU32(HpAddr) == 0) return false;
         byte step = m.ReadU8(PlayerStepAddr);
         if (step is 16 or 17) return false;

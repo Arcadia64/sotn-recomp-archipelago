@@ -88,5 +88,5 @@ static class OwedItems
     }
 
     static bool IsKilled(IMemory m, LocationInfo? loc) =>
-        loc != null && loc.Kind == Detect.KillTime && m.ReadU16(loc.Addresses[0]) != 0;
+        loc != null && loc.Kind == Detect.KillTime && m.ReadU32(loc.Addresses[0]) != 0;
 }

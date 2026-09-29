@@ -26,7 +26,7 @@ static class SpecialSpots
             var p = loc.Place;
             if (loc.Kind != Detect.KillTime || p.Reward.Length == 0 || p.PickupFlags.Length == 0) continue;
             if (p.Reward[0].Stage != stage) continue;                       // in this boss's own stage
-            if (m.ReadU16(loc.Addresses[0]) == 0) continue;                 // boss not beaten yet
+            if (m.ReadU32(loc.Addresses[0]) == 0) continue;                 // boss not beaten yet
             if (!ApClient.TryGetScout(loc.Id, out var scout)) continue;
             long placed = scout.Player == slot ? scout.Item : Placement.PlaceholderItem;
             if (placed != item || SeedPlan.IsUnsupported(loc.Id)) continue;

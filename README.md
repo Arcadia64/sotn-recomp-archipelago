@@ -38,7 +38,8 @@ The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works 
 - A **new game** needs the connection: it waits on the file select screen until you're connected.
 - A **save** plays with its own seed even without a connection, if you've played that seed on this PC: the mod
   keeps the seeds it has connected to (the 10 most recent) in `archipelago-seeds\` next to the game. Checks you
-  make offline are sent, and items for you received, as soon as you connect, also mid-game.
+  make offline are sent, and items for you received, as soon as you connect, also mid-game. So is your goal, if
+  you beat Dracula offline.
 - A **save from a different seed** than the connected server's plays offline with its own seed (the mod
   disconnects from the other one and says so). Only if that seed isn't on this PC does it wait for a
   connection to its own server.

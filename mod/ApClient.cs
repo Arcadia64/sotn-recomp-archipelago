@@ -51,6 +51,14 @@ public static class ApClient
 
     static int _connectionId;
 
+    // The seed and slot the scouts (and the goal) belong to: a reconnect to the same one keeps them, so the
+    // seed's placement stays in use while the server answers the scouts again.
+    static string _scoutsFor = "";
+
+    // Dracula beaten in this seed (CheckTracker.TickGoal); sent on each connection until the server has it.
+    static bool _goalReached;
+    static int _goalSentOn = -1;
+
     // The seed came from this PC's cache (SeedCache), not a live connection: the game can be played with
     // it; checks are sent and items received the next time we connect.
     static bool _offline;
@@ -117,6 +125,7 @@ public static class ApClient
                 ["missing"] = new JsonArray(_missing.Select(id => (JsonNode)JsonValue.Create(id)!).ToArray()),
                 ["scouts"] = new JsonArray(_scouts.Values.Select(Row).ToArray()),
                 ["received"] = new JsonArray(_received.Select(Row).ToArray()),
+                ["goal"] = _goalReached,
             };
         }
 
@@ -152,6 +161,8 @@ public static class ApClient
                 foreach (var row in seed["scouts"]!.AsArray()) { var i = Item(row!); _scouts[i.Location] = i; }
                 _received.Clear();
                 foreach (var row in seed["received"]!.AsArray()) _received.Add(Item(row!));
+                _goalReached = seed["goal"]?.GetValue<bool>() ?? false;
+                _scoutsFor = Identity(_seedName, _slot);
                 _connectionId++;
                 _offline = true;
                 _status = $"Offline: seed {_seedName} as {_slotName} from this PC (connect to send checks and receive items)";
@@ -235,10 +246,11 @@ public static class ApClient
             _checked.Clear();
             _missing.Clear();
             _scouts.Clear();
+            _scoutsFor = "";
+            _goalReached = false;
             _received.Clear();
             _tags.Clear();
         }
-        ItemGiver.ClearDirect();
         SetState(ConnectionState.Disconnected, "Not connected");
     }
 
@@ -404,12 +416,21 @@ public static class ApClient
     static void OnConnected(JsonObject p)
     {
         List<long> all;
+        bool sendGoal;
         lock (_gate)
         {
             _connectionId++;
             _offline = false;
-            _scouts.Clear();
-            _slot = p["slot"]!.GetValue<int>();
+            int slot = p["slot"]!.GetValue<int>();
+            if (Identity(_seedName, slot) != _scoutsFor)
+            {
+                _scouts.Clear();
+                _scoutsFor = "";
+                _goalReached = false;
+            }
+            sendGoal = _goalReached;
+            if (sendGoal) _goalSentOn = _connectionId;
+            _slot = slot;
             _team = p["team"]!.GetValue<int>();
             _slotData = p["slot_data"]?.AsObject();
             ReadPlayers(p);
@@ -434,6 +455,11 @@ public static class ApClient
         });
 
         if (OptionInt("death_link") > 0) SetTag("DeathLink", true);
+        if (sendGoal)
+        {
+            Log.Info("goal: telling the server Dracula was beaten");
+            SendGoal();
+        }
     }
 
     static void ReadPlayers(JsonObject p)
@@ -506,6 +532,7 @@ public static class ApClient
                 _scouts[item.Location] = item;
                 count++;
             }
+            _scoutsFor = Identity(_seedName, _slot);
         }
         Log.Info($"scouted {count} location(s)");
     }
@@ -578,7 +605,26 @@ public static class ApClient
         });
     }
 
-    public static void SendGoal() => Send(new JsonObject { ["cmd"] = "StatusUpdate", ["status"] = 30 });
+    // The goal is reached: recorded for this seed (kept in the seed cache) and sent once per connection.
+    public static void ReachGoal()
+    {
+        lock (_gate)
+        {
+            _goalReached = true;
+            if (_state != ConnectionState.Connected || _goalSentOn == _connectionId) return;
+            _goalSentOn = _connectionId;
+        }
+        SendGoal();
+    }
+
+    public static bool GoalReached { get { lock (_gate) return _goalReached; } }
+
+    static void SendGoal() => Send(new JsonObject { ["cmd"] = "StatusUpdate", ["status"] = 30 });
+
+    static string Identity(string seed, int slot) => seed.Length == 0 || slot < 0 ? "" : $"{seed}:{slot}";
+
+    // Which seed and slot is in use ("" if none): per-seed state kept elsewhere checks it's still current.
+    public static string SeedIdentity { get { lock (_gate) return Identity(_seedName, _slot); } }
 
     public static void SendDeath(string cause)
     {

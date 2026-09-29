@@ -17,7 +17,9 @@ static class SeedCache
     const int CheckEveryFrames = 60 * 5;
     const int SeedsKept = 10;   // the most recently played; older ones are deleted
 
-    static (int Connection, int Checked, int Received, int Scouts) _saved = (-1, -1, -1, -1);
+    static (int Connection, int Checked, int Received, int Scouts, bool Goal) _saved = (-1, -1, -1, -1, false);
+
+    static int _goalLookedOn = -1;
 
     static string Folder => Path.Combine(AppContext.BaseDirectory, "archipelago-seeds");
     static string FileFor(uint id) => Path.Combine(Folder, $"{id:X8}.json");
@@ -26,14 +28,21 @@ static class SeedCache
     public static void Tick(long frame)
     {
         if (frame % CheckEveryFrames != 0 || !ApClient.HasSeed || !ApClient.ScoutsComplete) return;
-        var now = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount);
+        string path = FileFor(SaveLink.ExpectedHash());
+        // Dracula beaten while offline, and this connection came straight to the seed (no save loaded from
+        // the cache yet): the file still has it; the server is told before the file is rewritten.
+        if (_goalLookedOn != ApClient.ConnectionId)
+        {
+            _goalLookedOn = ApClient.ConnectionId;
+            if (!ApClient.GoalReached && CachedGoal(path)) ApClient.ReachGoal();
+        }
+        var now = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached);
         if (now == _saved) return;
         var seed = ApClient.ExportSeed();
         if (seed == null) return;
         try
         {
             Directory.CreateDirectory(Folder);
-            string path = FileFor(SaveLink.ExpectedHash());
             File.WriteAllText(path + ".tmp", seed.ToJsonString());
             File.Move(path + ".tmp", path, overwrite: true);
             Prune(path);
@@ -65,6 +74,19 @@ static class SeedCache
     }
 
     public static bool Has(uint id) => id != 0 && File.Exists(FileFor(id));
+
+    static bool CachedGoal(string path)
+    {
+        try
+        {
+            return File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject seed
+                && seed["goal"] is JsonValue goal && goal.TryGetValue(out bool reached) && reached;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     static uint _failedFor;
 
@@ -110,7 +132,7 @@ static class SeedCache
             if (seed == null || seed["version"]?.GetValue<int>() != 1) return false;
             if (!ApClient.ImportSeed(seed)) return false;
             File.SetLastWriteTimeUtc(FileFor(id), DateTime.UtcNow); // played now: kept by Prune
-            _saved = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount);
+            _saved = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached);
             Log.Info($"playing offline with seed {ApClient.SeedName}, slot {ApClient.Slot} ({ApClient.SlotName}) from this PC");
             return true;
         }

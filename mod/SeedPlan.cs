@@ -90,6 +90,7 @@ static class SeedPlan
         if (RecompOne.Runtime.Runtime.Mem is { } before) RestoreDra(before);
 
         _byStage.Clear();
+        SpillSlots.Clear();
         _unsupported.Clear();
         _byPickupFlag.Clear();
         _directDrops.Clear();
@@ -250,6 +251,7 @@ static class SeedPlan
 
     static void Add(RamWrite w)
     {
+        if (SpillSlots.Take(w.Stage, w.Addr, w.Value, w.Size)) return; // put in only while read (SpillSlots)
         if (!_byStage.TryGetValue(w.Stage, out var list)) _byStage[w.Stage] = list = [];
         list.Add(w);
     }
@@ -330,12 +332,17 @@ static class SeedPlan
 
     // Files loaded outside stage loads (SEL: title, file select, ending) are written each frame while
     // loaded and the CD is idle, i.e. once the whole file is in. The writes are the same every time.
+    // The recomp can keep "sel" in its loaded overlays after a stage has replaced it, so the overlay's
+    // header (its first word, as the recomp's own ScreenBounds checks) says whether SEL is really there.
     const uint IsUsingCdAddr = 0x8006C3B0, CdStepAddr = 0x8006C398;
+    const uint SelHeaderWord = 0x801AEED8;
 
     public static void ApplyResidentFiles(IMemory m)
     {
         if (!Ready || _sel.Count == 0) return;
+        if (m.ReadU8(Game.GameStateAddr) == (byte)GameState.Play) return;
         if (m.ReadU32(IsUsingCdAddr) != 0 || m.ReadU32(CdStepAddr) != 0) return;
+        if (m.ReadU32(OverlayBase) != SelHeaderWord) return;
         if (System.Array.IndexOf(RecompOne.Runtime.Dispatch.Dispatcher.ActiveNames, "sel") < 0) return;
         Write(m, _sel);
     }
