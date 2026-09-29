@@ -61,6 +61,7 @@ public sealed class MapPanel : IPanel
 
     public void Draw()
     {
+        if (LayoutKeeper.Holding) return; // the frame our docked layout is restored in
         ImGui.SetNextWindowSize(new Vector2(720, 660), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
@@ -69,6 +70,7 @@ public sealed class MapPanel : IPanel
             ImGui.End();
             return;
         }
+        LayoutKeeper.Report(Name);
 
         if (!ApClient.HasSeed)
             ImGui.TextDisabled("Connect to see your seed's locations.");

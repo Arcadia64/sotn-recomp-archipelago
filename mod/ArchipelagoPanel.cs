@@ -52,6 +52,7 @@ public sealed class ArchipelagoPanel : IPanel
 
     public void Draw()
     {
+        if (LayoutKeeper.Holding) return; // the frame our docked layout is restored in
         ImGui.SetNextWindowSize(new Vector2(480, 420), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
@@ -60,6 +61,7 @@ public sealed class ArchipelagoPanel : IPanel
             ImGui.End();
             return;
         }
+        LayoutKeeper.Report(Name);
 
         DrawStatusLine();
         DrawConnection();

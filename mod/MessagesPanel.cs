@@ -41,6 +41,7 @@ public sealed class MessagesPanel : IPanel
 
     public void Draw()
     {
+        if (LayoutKeeper.Holding) return; // the frame our docked layout is restored in
         ImGui.SetNextWindowSize(new Vector2(640, 420), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
@@ -49,6 +50,7 @@ public sealed class MessagesPanel : IPanel
             ImGui.End();
             return;
         }
+        LayoutKeeper.Report(Name);
 
         if (ImGui.BeginTabBar("##tabs"))
         {

@@ -58,6 +58,7 @@ public sealed class ItemsPanel : IPanel
 
     public void Draw()
     {
+        if (LayoutKeeper.Holding) return; // the frame our docked layout is restored in
         ImGui.SetNextWindowSize(new Vector2(380, 520), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
@@ -66,6 +67,7 @@ public sealed class ItemsPanel : IPanel
             ImGui.End();
             return;
         }
+        LayoutKeeper.Report(Name);
 
         if (!ApClient.HasSeed) ImGui.TextDisabled("Connect to track your seed's items.");
         else
