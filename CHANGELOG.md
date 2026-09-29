@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 - Map: your position updates right after using a warp room, instead of when you leave the room
 
