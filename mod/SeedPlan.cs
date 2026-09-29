@@ -123,6 +123,10 @@ static class SeedPlan
         _builtFor = ApClient.ConnectionId;
         Log.Info($"placement ready ({(_fromPayload ? "patch data from the seed" : "worked out from scouts")}): "
                + $"{_byStage.Count} stage(s), {_unsupported.Count} spot(s) not placed yet");
+        // Easy to miss in the log: a seed from fdelduque's apworld has no patch data, so only item
+        // placement and the options the mod reads itself apply.
+        if (!_fromPayload)
+            ApClient.ShowToast("Archipelago", "Seed not made with this mod's sotn.apworld: items are placed, but most seed options (colours, music, drops, stats...) won't apply");
 
         // Mid-game connect: place items in the stage already loaded. Only during normal play, when
         // the loaded overlay is the current stage's; otherwise the next stage load does it.
