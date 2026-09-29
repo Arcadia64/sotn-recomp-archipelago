@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+
+- Docked windows now actually come back docked after restarting the game (in 0.3.2 they came back floating together)
+
 ## 0.3.2
 
 - Docked windows stay where you put them after restarting the game
