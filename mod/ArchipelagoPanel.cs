@@ -155,6 +155,12 @@ public sealed class ArchipelagoPanel : IPanel
             if (open) ImGui.PopStyleColor();
             if (ImGui.IsItemHovered()) ImGui.SetTooltip(open ? $"Close the {label.ToLowerInvariant()} window." : $"Open the {label.ToLowerInvariant()} window.");
         }
+
+        // The same switch as in the Archipelago menu.
+        ImGui.SameLine();
+        bool show = UiOptions.Show;
+        if (ImGui.Checkbox("Show window options", ref show)) UiOptions.Show = show;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Off: the map, items and text client windows show only their content, without their checkboxes, filters and sliders (cleaner on stream).");
     }
 
     // ---- the seed ----
