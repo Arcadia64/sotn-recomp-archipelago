@@ -42,13 +42,17 @@ def dra_disc(offset):
 
 
 def option_values(cls):
-    from Options import Toggle, Choice, Range
+    from Options import Toggle, Choice, Range, NamedRange
     if issubclass(cls, Choice):
         return sorted(cls.name_lookup)
     if issubclass(cls, Toggle):
         return [0, 1]
     if issubclass(cls, Range):
-        return sorted({cls.range_start, cls.default, cls.range_end})
+        values = sorted({cls.range_start, cls.default, cls.range_end})
+        # Named values ("use_difficulty") as the template writes them, not only numbers.
+        if issubclass(cls, NamedRange):
+            values += sorted(cls.special_range_names)
+        return values
     return None
 
 

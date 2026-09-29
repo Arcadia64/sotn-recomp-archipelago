@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from Options import (OptionGroup, Toggle, Choice, Range, ItemsAccessibility, StartInventoryPool,
+from Options import (OptionGroup, Toggle, Choice, NamedRange, ItemsAccessibility, StartInventoryPool,
                      PerGameCommonOptions)
 
 # "Key items" below are the items the logic can need: the relics, the Gold and Silver rings, the Spike breaker
@@ -139,7 +139,7 @@ class Difficulty(Choice):
     default = 1
 
 
-class EnemyStrength(Range):
+class EnemyStrength(NamedRange):
     """Enemy HP, attack and defence as a percentage of the vanilla values (25-200), instead of what difficulty
     sets. use_difficulty: leave it to difficulty."""
     display_name = "Enemy strength"

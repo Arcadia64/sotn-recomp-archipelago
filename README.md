@@ -1,90 +1,111 @@
-# Symphony of the Night: Archipelago for SymphonyRecomp
+# SotN Archipelago for SymphonyRecomp
 
-Play Castlevania: Symphony of the Night in an [Archipelago](https://archipelago.gg) multiworld on
-[SymphonyRecomp](https://github.com/BlackLabelHQ/SymphonyRecomp), the native PC recompilation of the PSX
-game. No disc patching and no emulator: you play on your own unmodified US disc, and the mod connects to
-the Archipelago server, places your seed's items and sends and receives checks.
+Castlevania: Symphony of the Night for [Archipelago](https://archipelago.gg), running on
+[SymphonyRecomp](https://github.com/BlackLabelHQ/SymphonyRecomp) instead of BizHawk. No emulator, and your disc
+doesn't get patched. The mod sets up your seed while the game runs.
 
-Work in progress. See [PLAN.md](PLAN.md) for what's done and what's next.
+It's based on fdelduque's SotN apworld, so the items, locations and logic are the same.
 
-## What you need
+This is still a test build, so expect some bugs. If you find one, please open an [issue](../../issues).
 
-- SymphonyRecomp v0.5.1b or newer, set up with your US disc as its README describes.
-- `archipelago.zip` (the mod) and `sotn_recomp.apworld` (the Archipelago world) from this project's releases.
+![The game with the map, item tracker and text client docked next to it](docs/images/screenshot.png)
 
-## Setting up
+## Requirements
 
-1. Put `archipelago.zip` in SymphonyRecomp's `mods` folder. Either leave it zipped or unzip it into its own folder
-   (`mods/archipelago/` with `mod.json` in it); the game reads both.
-2. Start the game. In the menu bar (F1 shows it): **Mods** -> tick **Archipelago**. It stays enabled.
+- SymphonyRecomp v0.5.1b or newer, set up with your own US disc image (SLUS-00067)
+- Archipelago 0.6.0 or newer
+- The files from the [latest release](../../releases/latest)
 
-## Generating a seed
+## Setup
 
-Whoever generates the multiworld installs `sotn_recomp.apworld` in Archipelago (Archipelago Launcher -> Install
-APWorld). Its game is **Symphony of the Night (Recomp)**: player files say `game: Symphony of the Night (Recomp)`
-(generate a template from the launcher). It's based on fdelduque's Symphony of the Night world (for BizHawk), with
-the same items and locations; the options do the same things, with clearer names and descriptions (the template
-explains each one). The two are separate games and can be installed side by side; this mod only plays seeds from
-this world. There is no patch file: the mod gets everything from the server.
+**Mod:** drop `sotn-archipelago-mod.zip` into SymphonyRecomp's `mods` folder (don't unzip it). Start the game,
+press F1, open Mods and enable Archipelago. To update, just replace the zip.
 
-The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works with this world as it is.
+**APWorld:** double-click `sotn_recomp.apworld` or install it from the Archipelago Launcher. The game is called
+"Symphony of the Night (Recomp)", so it won't conflict with the BizHawk version.
+
+**YAML:** use `Symphony-of-the-Night-Recomp.yaml` from the release, or generate a template from the launcher. All
+the options are explained in the file.
 
 ## Playing
 
-1. At the title screen: menu bar -> **Archipelago** -> **Connection** -> server (e.g. `archipelago.gg:38281`),
-   slot name, password -> **Connect**. After that, the mod connects to the same server and slot by itself when the game
-   starts (turn off "Connect when the game starts" in that window to stop it; a room password isn't kept).
-2. Start a new game, or load a save. A save belongs to the seed it was started with, and always plays with it.
+Press F1, go to Archipelago > Connection, and enter the server, your slot name and the password if there is one.
+After that it reconnects on its own when you start the game. Passwords aren't saved, so password rooms need a
+manual connect.
 
-- A **new game** needs the connection: it waits on the file select screen until you're connected.
-- A **save** plays with its own seed even without a connection, if you've played that seed on this PC: the mod
-  keeps the seeds it has connected to (the 10 most recent) in `archipelago-seeds\` next to the game. Checks you
-  make offline are sent, and items for you received, as soon as you connect, also mid-game. So is your goal, if
-  you beat Dracula offline.
-- A **save from a different seed** than the connected server's plays offline with its own seed (the mod
-  disconnects from the other one and says so). Only if that seed isn't on this PC does it wait for a
-  connection to its own server.
+Then start a new game or load your save. Each save is tied to its seed and the mod keeps a copy of the seed on
+your PC, so you can keep playing offline. Everything syncs when you reconnect.
 
-Items for other players look like a round **AP** badge coloured by importance: gold for progression, blue for
-useful, grey for filler, red for traps. Picking one up shows whose item it is. Items you receive pop up and
-appear in your inventory right away (only during normal play, never mid-menu or mid-cutscene).
+The goal is beating Dracula.
 
-The menu bar's **Archipelago** menu turns each window on or off, and the Connection window (the only one open at
-first) has buttons for the others. They can be docked beside the game by dragging their title bar onto it:
-- **Connection**: the server, the connection status, and a colour-coded log.
-- **Map**: your seed's locations on the castle map in the seed's map colours: green where you can go now in
-  logic, red not yet, grey checked, with your position and the location names (and, if you like, what's there)
-  on hover. Rooms you haven't explored (and their locations) can be shown faintly, or stay hidden until you
-  explore them.
-- **Items**: your relics, relics of Vlad, key items, familiar cards and vessels, with where each came from (or
-  where a hint says it is), and what you still need for Dracula; with "All items", every weapon, armor,
-  accessory and usable item too, each kind in its own section.
-- **Text client**: as in Archipelago's own Text Client: chat, items found and sent, hints and server messages, each kind
-  shown or hidden, a table of your hints, and a line to chat or send commands (`!hint`, `!release`...). The
-  game ignores the keyboard while you type there.
+## AP items
 
-**Show window options** in the same menu, turned off, hides the checkboxes, filters and sliders, so the windows
-show only their content (cleaner on stream).
+Items for other players show up as AP badges, colored by how important they are:
 
-## For developers
+| | |
+|:-:|---|
+| <img src="docs/images/ap-badge-progression.png" width="40" alt="Gold AP badge"> | **Progression**: someone needs it to progress |
+| <img src="docs/images/ap-badge-useful.png" width="40" alt="Blue AP badge"> | **Useful**: helpful, but not required |
+| <img src="docs/images/ap-badge-filler.png" width="40" alt="Grey AP badge"> | **Filler**: money, consumables, etc. |
+| <img src="docs/images/ap-badge-trap.png" width="40" alt="Red AP badge"> | **Trap** |
 
-- `mod/` - the SymphonyRecomp mod (C#, compiled by the game at load time)
-- `apworld/sotn_recomp/` - the Archipelago world ("Symphony of the Night (Recomp)"), from fdelduque's 0.8.16.1
-  with fixes, the BizHawk parts removed, and the data export for the mod
-- `tools/` - table generator, packaging, and offline checks (the mod's placement against fdelduque's patch, the
-  payload against the world's own writes, hooks against a built game)
-- `docs/research/` - notes on the AP world, the game's memory and the recomp
-- [TESTING.md](TESTING.md) - running a local server and the game; [PLAN.md](PLAN.md) - design, status, PC setup
+Picking one up sends it to its owner. Your own items look like normal items.
+
+## In-game windows
+
+Everything is under the Archipelago menu (F1), and the Connection window has buttons for the rest.
+
+- **Map**: your locations on the castle map. Green is reachable now, red is blocked, grey is checked. Hover for
+  names.
+- **Items**: an item tracker with a checklist for the goal.
+- **Text client**: chat, hints and commands like `!hint`.
+
+The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) also works.
+
+## Compared to the BizHawk version
+
+Both versions use the same items, locations and logic, and the PopTracker pack works with either. If you play on
+BizHawk, fdelduque's version is the one to use. This one is for playing on SymphonyRecomp, and it adds a few
+things along the way:
+
+- Everything runs inside the recomp, with no separate client
+- AP items are shown as colored badges
+- A built-in map, item tracker and text client
+- Offline play, with saves tied to their seed
+- Reworded option names and some fixes (see the [changelog](CHANGELOG.md))
+
+## What the mod changes
+
+The mod only connects to the Archipelago server you enter. It keeps your last 10 seeds in `archipelago-seeds` in
+the game folder, stores its settings in the recomp's `interface.ini`, and uses a few unused bytes in your save
+(which seed it belongs to and how many items you've received). It also turns off the recomp's built-in
+randomizer while you're playing an AP seed. More detail in [how it works](docs/how-it-works.md).
+
+## Troubleshooting
+
+- If Archipelago isn't in the menu bar, check the Mods window. A red mark means it failed to build, and the console
+  will say why.
+- "InvalidGame" when connecting means the seed was made with the BizHawk apworld.
+- For anything else, copy the log from the Connection window and open an issue. Please don't report bugs with this
+  mod to SymphonyRecomp.
+
+## Development
+
+`mod/` is the mod (C#, compiled by the game), `apworld/sotn_recomp/` is the apworld, and `tools/` has the build
+scripts and offline tests. See [TESTING.md](TESTING.md) and [how it works](docs/how-it-works.md).
 
 ## Credits
 
-- The SotN Archipelago world: fdelduque, with location and item groups from Darvitz.
-- SymphonyRecomp and RecompOne: BlackLabelHQ. Integrated randomizer and randomizer support in the recomp:
-  MottZilla, eldri7ch.
-- Randomizer research the AP world builds on: Wild Mouse (sotn.io), MottZilla, eldri7ch, TalicZealot,
-  Forat Negre, CRAZY4BLADES, and the sotn-decomp contributors.
-- SotN Archipelago map tracker: Michpem, DorkmasterFlek.
-- [Archipelago](https://github.com/ArchipelagoMW/Archipelago).
+- fdelduque for the original SotN apworld, and Darvitz for the item and location groups
+- BlackLabelHQ for SymphonyRecomp, and MottZilla and eldri7ch for its randomizer support
+- Wild Mouse (sotn.io), MottZilla, eldri7ch, TalicZealot, Forat Negre, CRAZY4BLADES and the sotn-decomp
+  contributors for the randomizer research all of this builds on
+- Michpem and DorkmasterFlek for the PopTracker pack
+- The Archipelago team
 
-MIT licence ([LICENSE](LICENSE)); the AP world in `apworld/` keeps Archipelago's MIT licence
-([apworld/LICENSE](apworld/LICENSE)). This project isn't affiliated with Konami, BlackLabelHQ or the Archipelago team.
+Made by Arcadia64 with help from Claude.
+
+## License
+
+MIT (the apworld keeps Archipelago's MIT license). No game data is included; you need your own copy of the game.
+Not affiliated with Konami, BlackLabelHQ or Archipelago.

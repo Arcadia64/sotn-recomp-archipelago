@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: SymphonyRecomp problems not caused by this mod
+    url: https://github.com/BlackLabelHQ/SymphonyRecomp
+    about: If the game has the problem without this mod enabled, it's SymphonyRecomp's. Problems with this mod belong here, not there.

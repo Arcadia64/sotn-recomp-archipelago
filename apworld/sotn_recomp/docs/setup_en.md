@@ -5,15 +5,17 @@
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.0 or newer.
 - [SymphonyRecomp](https://github.com/BlackLabelHQ/SymphonyRecomp/releases) v0.5.1b or newer, set up with your US
   disc image (SLUS-00067) as its README describes.
-- From this project's releases: `sotn_recomp.apworld` (this world) and `archipelago.zip` (the mod).
+- From the [project's releases](https://github.com/Arcadia64/sotn-recomp-archipelago/releases/latest):
+  `sotn_recomp.apworld` (this world) and `sotn-archipelago-mod.zip` (the mod).
 
 ## Installing
 
 1. **The world** (whoever generates the multiworld needs it): in the Archipelago Launcher choose **Install APWorld**
    and pick `sotn_recomp.apworld`, then restart the launcher. It can sit next to fdelduque's Symphony of the Night
    world; they are separate games.
-2. **The mod** (each player): put `archipelago.zip` in SymphonyRecomp's `mods` folder, zipped or unzipped into its own
-   folder. Start the game, open the menu bar (F1) and check **Mods**: Archipelago should be listed and ticked.
+2. **The mod** (each player): put `sotn-archipelago-mod.zip` in SymphonyRecomp's `mods` folder (no need to unzip it;
+   to update, replace it). Start the game, open the menu bar (F1) and check **Mods**: Archipelago should be listed
+   and ticked.
 
 ## Generating
 
@@ -34,12 +36,13 @@ There is no patch file for this game: the mod gets everything it needs from the 
    offline, and sync (checks sent, items received) as soon as you connect. Beating Dracula offline counts too:
    the server is told the next time you connect.
 
-Commands such as `!hint`, `!release` or `!collect` can be sent from the Archipelago Text Client, connected to the
-same slot.
+Commands such as `!hint`, `!release` or `!collect` can be sent from the mod's own **Text client** window (menu bar ->
+Archipelago -> Text client), or from Archipelago's Text Client connected to the same slot.
 
 ## Tracker
 
-The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works with this world: connect it to the
+The mod has its own **Map** and **Items** windows (menu bar -> Archipelago). The
+[SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works with this world too: connect it to the
 same server and slot.
 
 ## Troubleshooting
@@ -48,4 +51,6 @@ same server and slot.
   game's console window says why.
 - **"InvalidGame" when connecting:** the slot was generated with fdelduque's world (for BizHawk). Generate with this
   world instead.
-- Anything else: the console window logs everything the mod does; include it when reporting a problem.
+- Anything else: the **Log** section of the Connection window (and the game's console window) shows what the mod
+  did; include it when reporting a problem, in the
+  [project's issues](https://github.com/Arcadia64/sotn-recomp-archipelago/issues).
