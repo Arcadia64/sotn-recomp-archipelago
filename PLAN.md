@@ -1,6 +1,3 @@
-Next:
-1. In-game test pass of everything in the "not yet seen in game" list.
-2. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
 # SotN Archipelago for SymphonyRecomp: plan
 
 Goal: play SotN in an Archipelago multiworld on the PC recomp, on a **vanilla disc**, with no disc patch and no BizHawk.
@@ -45,7 +42,14 @@ Built, verified offline or by reading the code, not yet seen in game:
 
 Next:
 1. In-game test pass of everything in the "not yet seen in game" list.
-2. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
+2. Keep recomp and BizHawk SotN from getting mixed up (after the test pass). Today our `sotn.apworld` uses
+   the same game name and file name as fdelduque's, so it silently replaces it, and it makes a BizHawk
+   `.apsotn` patch for every slot, recomp players included, who don't need it. Ideas, to decide then:
+   - a per-player option (e.g. `platform: recomp | bizhawk`): recomp slots get no `.apsotn`; the mod
+     warns when connecting to a BizHawk slot (and the BizHawk client could refuse a recomp slot);
+   - make it obvious which apworld is installed (distinct file name or version label), while keeping
+     the game name "Symphony of the Night" so PopTracker and mixed BizHawk/recomp multiworlds keep working.
+3. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
 
 ---
 
