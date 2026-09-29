@@ -31,6 +31,9 @@ public sealed class ArchipelagoMod : IMod
     readonly ItemsPanel _items = new();
     readonly MessagesPanel _messages = new();
     readonly KeyboardFixes _keyboard = new();
+    readonly LayoutKeeper _layout;
+
+    public ArchipelagoMod() => _layout = new LayoutKeeper(() => Array.Exists(Windows, w => w.IsOpen));
 
     IPanel[] Windows => [_panel, _map, _items, _messages];
 
@@ -38,6 +41,7 @@ public sealed class ArchipelagoMod : IMod
     {
         Log.Info("loading");
         Localization.Merge(Strings);
+        PanelManager.Register(_layout); // before the windows: it puts their docked layout back first
         foreach (var window in Windows)
         {
             RestoreOpen(window, defaultOpen: window == _panel);
@@ -59,6 +63,7 @@ public sealed class ArchipelagoMod : IMod
         MenuRegistry.Remove(MenuKey);
         foreach (var window in Windows) RemovePanel(window);
         RemovePanel(_keyboard);
+        RemovePanel(_layout);
         Log.Info("unloaded");
     }
 

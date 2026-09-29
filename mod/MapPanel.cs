@@ -253,6 +253,27 @@ public sealed class MapPanel : IPanel
         draw.PopClipRect();
         ImGui.Dummy(size);
         if (hovered != null) DrawTooltip(hovered, reachable, logic);
+        DrawHintMenu(hovered);
+    }
+
+    // Right-click a location: ask the server what's there (!hint_location, costs hint points).
+    List<long> _menuIds = [];
+
+    void DrawHintMenu(List<long>? hovered)
+    {
+        if (hovered != null && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+        {
+            _menuIds = hovered.Where(ApClient.IsMissing).ToList();
+            if (_menuIds.Count > 0) ImGui.OpenPopup("##maphint");
+        }
+        if (!ImGui.BeginPopup("##maphint")) return;
+        bool connected = ApClient.State == ConnectionState.Connected;
+        foreach (long id in _menuIds)
+        {
+            string name = LocationData.Get(id)?.Name ?? $"Location {id}";
+            if (ImGui.MenuItem($"Ask for a hint: {name}", "", false, connected)) ApClient.Say($"!hint_location {name}");
+        }
+        ImGui.EndPopup();
     }
 
     void DrawTooltip(List<long> ids, IReadOnlySet<long> reachable, bool logic)
@@ -270,6 +291,7 @@ public sealed class MapPanel : IPanel
             if (!open) text += " (checked)";
             ImGui.TextColored(ImGui.ColorConvertU32ToFloat4(colour), text);
         }
+        if (ids.Any(ApClient.IsMissing)) ImGui.TextDisabled("Right-click to ask for a hint.");
         ImGui.EndTooltip();
     }
 

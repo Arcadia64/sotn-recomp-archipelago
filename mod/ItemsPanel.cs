@@ -156,6 +156,14 @@ public sealed class ItemsPanel : IPanel
         }
         ImGui.Dummy(new Vector2(size, size));
         if (ImGui.IsItemHovered()) Tooltip(id, name, owned, have);
+
+        // Right-click an item you don't have: ask the server where it is (!hint, costs hint points).
+        if (!owned && ImGui.BeginPopupContextItem($"##hint{id}"))
+        {
+            if (ImGui.MenuItem($"Ask for a hint: {name}", "", false, ApClient.State == ConnectionState.Connected))
+                ApClient.Say($"!hint {name}");
+            ImGui.EndPopup();
+        }
     }
 
     static void Tooltip(long id, string name, bool owned, Owned have)
@@ -176,7 +184,7 @@ public sealed class ItemsPanel : IPanel
                 ImGui.TextColored(ImGui.ColorConvertU32ToFloat4(h.Found ? Messages.Green : Messages.LocationColour),
                     (h.Found ? "Hint (found): " : "Hint: ") + where);
             }
-            if (!owned && hints.Count == 0) ImGui.TextDisabled("Not found yet.");
+            if (!owned && hints.Count == 0) ImGui.TextDisabled("Not found yet. Right-click to ask for a hint.");
         }
         ImGui.EndTooltip();
     }

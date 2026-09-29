@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Docked windows stay where you put them after restarting the game
+- Right-click an item you don't have (Items) or a location (Map) to ask for a hint
+
 ## 0.3.1
 
 - Map: your position updates right after using a warp room, instead of when you leave the room
