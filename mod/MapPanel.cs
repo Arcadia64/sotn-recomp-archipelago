@@ -56,7 +56,7 @@ public sealed class MapPanel : IPanel
         _showChecked = settings.GetBool(CheckedKey, true);
         _showItems = settings.GetBool(ItemsKey, false);
         _showUnexplored = settings.GetBool(UnexploredKey, true);
-        _showCounts = settings.GetBool(CountsKey, true);
+        _showCounts = settings.GetBool(CountsKey, false);
     }
 
     public void Draw()
