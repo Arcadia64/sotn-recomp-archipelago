@@ -31,8 +31,8 @@ The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works 
 
 ## Playing
 
-1. At the title screen: menu bar -> **Archipelago** -> server (e.g. `archipelago.gg:38281`), slot name,
-   password -> **Connect**. After that, the mod connects to the same server and slot by itself when the game
+1. At the title screen: menu bar -> **Archipelago** -> **Connection** -> server (e.g. `archipelago.gg:38281`),
+   slot name, password -> **Connect**. After that, the mod connects to the same server and slot by itself when the game
    starts (turn off "Connect when the game starts" in that window to stop it; a room password isn't kept).
 2. Start a new game, or load a save. A save belongs to the seed it was started with, and always plays with it.
 
@@ -47,10 +47,19 @@ The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works 
 
 Items for other players look like a round **AP** badge coloured by importance: gold for progression, blue for
 useful, grey for filler, red for traps. Picking one up shows whose item it is. Items you receive pop up and
-appear in your inventory right away (only during normal play, never mid-menu or mid-cutscene). The
-**Archipelago** window has the connection status and a colour-coded log, and its **Map** button opens a map of
-your seed's locations: green where you can go now in logic, red not yet, grey checked, with your position
-and the location names (and, if you like, what's there) on hover.
+appear in your inventory right away (only during normal play, never mid-menu or mid-cutscene).
+
+The menu bar's **Archipelago** menu turns each window on or off (they can be docked beside the game by dragging
+their title bar onto it):
+- **Connection**: the server, the connection status, and a colour-coded log.
+- **Map**: your seed's locations on the castle map in the seed's map colours: green where you can go now in
+  logic, red not yet, grey checked, with your position and the location names (and, if you like, what's there)
+  on hover. The rest of the castle can be shown faintly or left dark until you explore it.
+- **Items**: your relics, relics of Vlad, key items, familiar cards and vessels, with where each came from (or
+  where a hint says it is), and what you still need for Dracula.
+- **Messages**: Archipelago's text client: chat, items found and sent, hints and server messages, each kind
+  shown or hidden, a table of your hints, and a line to chat or send commands (`!hint`, `!release`...). The
+  game ignores the keyboard while you type there.
 
 ## For developers
 

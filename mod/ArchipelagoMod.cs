@@ -14,25 +14,38 @@ public sealed class ArchipelagoMod : IMod
     const string Strings = """
         {"strings": {
           "menu.archipelago": {"en": "Archipelago"},
+          "menu.archipelago.connection": {"en": "Connection"},
+          "menu.archipelago.map": {"en": "Map"},
+          "menu.archipelago.items": {"en": "Items"},
+          "menu.archipelago.messages": {"en": "Messages"},
           "panel.archipelago": {"en": "Archipelago"},
-          "panel.archipelago.map": {"en": "Archipelago map"}
+          "panel.archipelago.map": {"en": "Archipelago map"},
+          "panel.archipelago.items": {"en": "Archipelago items"},
+          "panel.archipelago.messages": {"en": "Archipelago messages"}
         }}
         """;
 
     readonly ArchipelagoPanel _panel = new();
     readonly MapPanel _map = new();
-    readonly ModifierKeys _modifierKeys = new();
+    readonly ItemsPanel _items = new();
+    readonly MessagesPanel _messages = new();
+    readonly KeyboardFixes _keyboard = new();
+
+    IPanel[] Windows => [_panel, _map, _items, _messages];
 
     public void OnLoad()
     {
         Log.Info("loading");
         Localization.Merge(Strings);
-        PanelManager.Register(_panel);
+        foreach (var window in Windows)
+        {
+            RestoreOpen(window);
+            PanelManager.Register(window);
+        }
+        PanelManager.Register(_keyboard);
         ConnectGate.ShowPanel = () => _panel.IsOpen = true;
-        PanelManager.Register(_map);
-        PanelManager.Register(_modifierKeys);
         _panel.Map = _map;
-        AddBarItem(MenuKey, TogglePanel);
+        AddMenu();
         Event.AddListener<VSyncEvent>(OnVSync);
         _panel.ConnectOnStart();
     }
@@ -43,33 +56,43 @@ public sealed class ArchipelagoMod : IMod
         ConnectGate.ShowPanel = null;
         Event.RemoveListener<VSyncEvent>(OnVSync);
         MenuRegistry.Remove(MenuKey);
-        RemovePanel(_panel);
-        RemovePanel(_map);
-        RemovePanel(_modifierKeys);
+        foreach (var window in Windows) RemovePanel(window);
+        RemovePanel(_keyboard);
         Log.Info("unloaded");
     }
 
     public void DrawSettings() => _panel.DrawDetails();
 
-    void TogglePanel() => _panel.IsOpen = !_panel.IsOpen;
-
+    // The menu bar's Archipelago menu: each window on or off.
     // The menu and panel API differs between recomp versions, so call whichever this build has.
-    // v0.5.1b: BarItem(key, onClick, order) places items by order (Randomizer is 200) and returns
-    // nothing, and there's no PanelManager.Unregister. Later builds: BarItem(key, onClick) returns a
-    // MenuBuilder with After(key), and Unregister exists.
+    // v0.5.1b: Menu(key, order) places menus by order (Randomizer is 200), and there's no
+    // PanelManager.Unregister. Later builds: Menu(key) with After(key), and Unregister exists.
     const int RandomizerOrder = 200;
 
-    static void AddBarItem(string key, Action onClick)
+    void AddMenu()
     {
         var registry = typeof(MenuRegistry);
-        var byOrder = registry.GetMethod("BarItem", [typeof(string), typeof(Action), typeof(int)]);
-        if (byOrder != null)
+        var menu = registry.GetMethod("Menu", [typeof(string), typeof(int)]) is { } byOrder
+            ? byOrder.Invoke(null, [MenuKey, RandomizerOrder]) as MenuBuilder // same order, added later: just after it
+            : registry.GetMethod("Menu", [typeof(string)])?.Invoke(null, [MenuKey]) as MenuBuilder;
+        if (menu == null)
         {
-            byOrder.Invoke(null, [key, onClick, RandomizerOrder]); // same order, added later: just after it
+            Log.Error("couldn't add the Archipelago menu to this recomp build");
             return;
         }
-        var builder = registry.GetMethod("BarItem", [typeof(string), typeof(Action)])!.Invoke(null, [key, onClick]);
-        builder?.GetType().GetMethod("After", [typeof(string)])?.Invoke(builder, ["menu.randomizer"]);
+        typeof(MenuBuilder).GetMethod("After", [typeof(string)])?.Invoke(menu, ["menu.randomizer"]);
+        Toggle(menu, "menu.archipelago.connection", _panel);
+        Toggle(menu, "menu.archipelago.map", _map);
+        Toggle(menu, "menu.archipelago.items", _items);
+        Toggle(menu, "menu.archipelago.messages", _messages);
+    }
+
+    static void Toggle(MenuBuilder menu, string key, IPanel panel) => menu.Check(key, () => panel.IsOpen, open => panel.IsOpen = open);
+
+    // Open again if it was open last time (the recomp restores its own windows before mods load).
+    static void RestoreOpen(IPanel panel)
+    {
+        if (RecompOne.Runtime.Runtime.View.Panels.TryGetValue(panel.Name, out var state)) panel.IsOpen = state.Open;
     }
 
     static void RemovePanel(IPanel panel)

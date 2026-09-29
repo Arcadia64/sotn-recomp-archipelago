@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -17,7 +18,7 @@ static class SeedCache
     const int CheckEveryFrames = 60 * 5;
     const int SeedsKept = 10;   // the most recently played; older ones are deleted
 
-    static (int Connection, int Checked, int Received, int Scouts, bool Goal) _saved = (-1, -1, -1, -1, false);
+    static (int Connection, int Checked, int Received, int Scouts, bool Goal, int Hints) _saved = (-1, -1, -1, -1, false, -1);
 
     static int _goalLookedOn = -1;
 
@@ -36,7 +37,7 @@ static class SeedCache
             _goalLookedOn = ApClient.ConnectionId;
             if (!ApClient.GoalReached && CachedGoal(path)) ApClient.ReachGoal();
         }
-        var now = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached);
+        var now = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached, HintState());
         if (now == _saved) return;
         var seed = ApClient.ExportSeed();
         if (seed == null) return;
@@ -74,6 +75,13 @@ static class SeedCache
     }
 
     public static bool Has(uint id) => id != 0 && File.Exists(FileFor(id));
+
+    // Changes when a hint is added or found (the hint list only grows; found hints change their status).
+    static int HintState()
+    {
+        var hints = Messages.Hints;
+        return hints.Length * 1000 + hints.Count(h => h.Found);
+    }
 
     static bool CachedGoal(string path)
     {
@@ -132,7 +140,7 @@ static class SeedCache
             if (seed == null || seed["version"]?.GetValue<int>() != 1) return false;
             if (!ApClient.ImportSeed(seed)) return false;
             File.SetLastWriteTimeUtc(FileFor(id), DateTime.UtcNow); // played now: kept by Prune
-            _saved = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached);
+            _saved = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached, HintState());
             Log.Info($"playing offline with seed {ApClient.SeedName}, slot {ApClient.Slot} ({ApClient.SlotName}) from this PC");
             return true;
         }

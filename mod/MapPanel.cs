@@ -35,9 +35,11 @@ public sealed class MapPanel : IPanel
     static readonly string[] ViewNames = ["Where I am", "Castle", "Inverted castle"];
 
     const string ViewKey = "Archipelago.Map.View", CheckedKey = "Archipelago.Map.ShowChecked", ItemsKey = "Archipelago.Map.ShowItems";
+    const string WholeCastleKey = "Archipelago.Map.WholeCastle";
     View _view;
     bool _showChecked;
     bool _showItems;
+    bool _wholeCastle;
 
     uint _castleTexture, _invertedTexture;
     bool _texturesTried;
@@ -52,6 +54,7 @@ public sealed class MapPanel : IPanel
         _view = (View)Math.Clamp(settings.GetInt(ViewKey, 0), 0, 2);
         _showChecked = settings.GetBool(CheckedKey, true);
         _showItems = settings.GetBool(ItemsKey, false);
+        _wholeCastle = settings.GetBool(WholeCastleKey, true);
     }
 
     public void Draw()
@@ -90,6 +93,9 @@ public sealed class MapPanel : IPanel
         bool changed = ImGui.Combo("##view", ref view, ViewNames, ViewNames.Length);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Which castle to show: the one you're in, or either.");
         ImGui.SameLine();
+        changed |= ImGui.Checkbox("Whole castle", ref _wholeCastle);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Also draw the rooms you haven't explored yet, faintly. Off: only the rooms you've explored, as on the pause map.");
+        ImGui.SameLine();
         changed |= ImGui.Checkbox("Show checked", ref _showChecked);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Also show locations you've already checked (grey).");
         ImGui.SameLine();
@@ -101,6 +107,7 @@ public sealed class MapPanel : IPanel
         settings.SetInt(ViewKey, view);
         settings.SetBool(CheckedKey, _showChecked);
         settings.SetBool(ItemsKey, _showItems);
+        settings.SetBool(WholeCastleKey, _wholeCastle);
         RecompOne.Runtime.Runtime.SaveView();
     }
 
@@ -170,13 +177,14 @@ public sealed class MapPanel : IPanel
         draw.AddRectFilled(origin, origin + size, Background);
         draw.PushClipRect(origin, origin + size, true);
 
-        // Explored rooms filled; walls faint everywhere, bright where explored.
+        // Explored rooms filled, their walls bright; the rest of the castle's walls faint (Whole castle) or not
+        // drawn, as on the pause map.
         var explored = Explored(inverted);
         foreach (var (x, y) in explored) draw.AddRectFilled(Corner(x, y), Corner(x, y) + new Vector2(cell, cell), fill);
         uint texture = inverted ? _invertedTexture : _castleTexture;
         if (texture != 0)
         {
-            draw.AddImage((nint)texture, origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
+            if (_wholeCastle) draw.AddImage((nint)texture, origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
             foreach (var (x, y) in explored)
             {
                 var uv0 = new Vector2(x * CellPixels / ImageWidth, ((y - shift) * CellPixels - TopCut) / ImageHeight);

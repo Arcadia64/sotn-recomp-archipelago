@@ -27,7 +27,7 @@ There is no patch file for this game: the mod gets everything it needs from the 
 ## Playing
 
 1. Start SymphonyRecomp.
-2. In the menu bar (F1): **Archipelago** -> enter the server (for example `archipelago.gg:38281`), your slot name
+2. In the menu bar (F1): **Archipelago** -> **Connection** -> enter the server (for example `archipelago.gg:38281`), your slot name
    and the password if there is one -> **Connect**. From then on the mod connects by itself when the game starts.
 3. Then start a new game or load your save. A new game waits for the connection (the seed comes from the server).
    A save always plays with the seed it was started with: saves of seeds you've played on this PC also work

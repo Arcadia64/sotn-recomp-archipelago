@@ -74,6 +74,7 @@ public static class ApClient
     public static string Status { get { lock (_gate) return _status; } }
     public static string SeedName { get { lock (_gate) return _seedName; } }
     public static int Slot { get { lock (_gate) return _slot; } }
+    public static int Team { get { lock (_gate) return _team; } }
     public static string SlotName => _slotName;
     public static JsonObject? SlotData { get { lock (_gate) return _slotData; } }
     public static int CheckedCount { get { lock (_gate) return _checked.Count; } }
@@ -126,6 +127,7 @@ public static class ApClient
                 ["scouts"] = new JsonArray(_scouts.Values.Select(Row).ToArray()),
                 ["received"] = new JsonArray(_received.Select(Row).ToArray()),
                 ["goal"] = _goalReached,
+                ["hints"] = Messages.HintsJson(),
             };
         }
 
@@ -162,6 +164,7 @@ public static class ApClient
                 _received.Clear();
                 foreach (var row in seed["received"]!.AsArray()) _received.Add(Item(row!));
                 _goalReached = seed["goal"]?.GetValue<bool>() ?? false;
+                Messages.SetHints(seed["hints"]);
                 _scoutsFor = Identity(_seedName, _slot);
                 _connectionId++;
                 _offline = true;
@@ -352,6 +355,8 @@ public static class ApClient
                     case "RoomUpdate": OnRoomUpdate(packet); break;
                     case "PrintJSON": OnPrintJson(packet); break;
                     case "Bounced": OnBounced(packet); break;
+                    case "Retrieved": OnRetrieved(packet); break;
+                    case "SetReply": OnSetReply(packet); break;
                     case "InvalidPacket": Log.Error($"server rejected a packet: {packet["text"]}"); break;
                 }
             }
@@ -455,6 +460,11 @@ public static class ApClient
         });
 
         if (OptionInt("death_link") > 0) SetTag("DeathLink", true);
+
+        // This slot's hints, now and whenever they change (Messages window, item tracker).
+        var hints = new JsonArray(JsonValue.Create(Messages.HintsKey(Team, Slot))!);
+        Send(new JsonObject { ["cmd"] = "Get", ["keys"] = hints.DeepClone() },
+             new JsonObject { ["cmd"] = "SetNotify", ["keys"] = hints });
         if (sendGoal)
         {
             Log.Info("goal: telling the server Dracula was beaten");
@@ -550,8 +560,20 @@ public static class ApClient
         }
     }
 
+    static void OnRetrieved(JsonObject p)
+    {
+        string key = Messages.HintsKey(Team, Slot);
+        if (p["keys"] is JsonObject keys && keys.ContainsKey(key)) Messages.SetHints(keys[key]);
+    }
+
+    static void OnSetReply(JsonObject p)
+    {
+        if (p["key"]?.GetValue<string>() == Messages.HintsKey(Team, Slot)) Messages.SetHints(p["value"]);
+    }
+
     static void OnPrintJson(JsonObject p)
     {
+        Messages.AddPrint(p);
         var text = RenderText(p["data"] as JsonArray);
         if (text.Length == 0) return;
 
@@ -581,6 +603,7 @@ public static class ApClient
         string cause = data?["cause"]?.GetValue<string>() ?? $"{source} died";
         Log.Info($"DeathLink: {cause}");
         _deaths.Enqueue(cause);
+        Messages.AddLocal($"DeathLink: {cause}", Messages.Red);
     }
 
     // ---- sending ----

@@ -50,9 +50,10 @@ Built, verified offline or by reading the code, not yet seen in game:
 Next:
 1. In-game test pass of everything in the "not yet seen in game" list. For the despawn fix, check the two
    Castle Keep spots (a ledge wall and a vase, detected by pickup, not by wall flag) as well as the walls.
-2. Map window, next steps: dim rooms not explored yet (the game's own map data), markers on the pause-screen
-   map itself.
-3. Tracker PR (location 394, enemysanity 400-540).
+2. The mod's own tracker windows (map, items, messages), from in-game testing. Next ideas: an area list with
+   enemysanity checks, "what's needed" for out-of-logic locations, markers on the pause-screen map, a
+   browser page for a second screen.
+3. Not planned for now: the PopTracker pack PR (location 394, enemysanity 400-540).
 
 Decided: BizHawk isn't supported. The AP world is its own game, "Symphony of the Night (Recomp)"
 (`apworld/sotn_recomp`, `sotn_recomp.apworld`), with the same item and location ids as fdelduque's world so

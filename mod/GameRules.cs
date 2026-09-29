@@ -214,6 +214,6 @@ static class GameRules
         if (state != GameState.MainMenu) { _remindedAtMenu = false; return; }
         if (connected || _remindedAtMenu) return;
         _remindedAtMenu = true;
-        ApClient.ShowToast("Archipelago", "Not connected. A new game needs the connection (menu bar > Archipelago); saves you've played on this PC can also be loaded offline.");
+        ApClient.ShowToast("Archipelago", "Not connected. A new game needs the connection (menu bar > Archipelago > Connection); saves you've played on this PC can also be loaded offline.");
     }
 }
