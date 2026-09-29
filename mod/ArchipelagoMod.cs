@@ -40,12 +40,12 @@ public sealed class ArchipelagoMod : IMod
         Localization.Merge(Strings);
         foreach (var window in Windows)
         {
-            RestoreOpen(window);
+            RestoreOpen(window, defaultOpen: window == _panel);
             PanelManager.Register(window);
         }
         PanelManager.Register(_keyboard);
         ConnectGate.ShowPanel = () => _panel.IsOpen = true;
-        _panel.Map = _map;
+        _panel.OtherWindows = [("Map", _map), ("Items", _items), ("Text client", _messages)];
         AddMenu();
         Event.AddListener<VSyncEvent>(OnVSync);
         _panel.ConnectOnStart();
@@ -92,10 +92,11 @@ public sealed class ArchipelagoMod : IMod
 
     static void Toggle(MenuBuilder menu, string key, IPanel panel) => menu.Check(key, () => panel.IsOpen, open => panel.IsOpen = open);
 
-    // Open again if it was open last time (the recomp restores its own windows before mods load).
-    static void RestoreOpen(IPanel panel)
+    // Open again if it was open last time (the recomp restores its own windows before mods load). The first
+    // time, only the Connection window is open; it has buttons for the others.
+    static void RestoreOpen(IPanel panel, bool defaultOpen)
     {
-        if (RecompOne.Runtime.Runtime.View.Panels.TryGetValue(panel.Name, out var state)) panel.IsOpen = state.Open;
+        panel.IsOpen = RecompOne.Runtime.Runtime.View.Panels.TryGetValue(panel.Name, out var state) ? state.Open : defaultOpen;
     }
 
     static void RemovePanel(IPanel panel)

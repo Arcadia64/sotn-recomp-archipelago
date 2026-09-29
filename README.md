@@ -49,8 +49,8 @@ Items for other players look like a round **AP** badge coloured by importance: g
 useful, grey for filler, red for traps. Picking one up shows whose item it is. Items you receive pop up and
 appear in your inventory right away (only during normal play, never mid-menu or mid-cutscene).
 
-The menu bar's **Archipelago** menu turns each window on or off (they can be docked beside the game by dragging
-their title bar onto it):
+The menu bar's **Archipelago** menu turns each window on or off, and the Connection window (the only one open at
+first) has buttons for the others. They can be docked beside the game by dragging their title bar onto it:
 - **Connection**: the server, the connection status, and a colour-coded log.
 - **Map**: your seed's locations on the castle map in the seed's map colours: green where you can go now in
   logic, red not yet, grey checked, with your position and the location names (and, if you like, what's there)

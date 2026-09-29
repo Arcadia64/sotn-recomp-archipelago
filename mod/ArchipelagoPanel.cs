@@ -6,7 +6,8 @@ using Sotn;
 
 namespace SotnArchipelago;
 
-// The Archipelago window: connection, the seed and save at a glance, details for bug reports, and the log.
+// The Archipelago window: connection, buttons for the other windows, the seed and save at a glance, and (folded)
+// details for bug reports and the log.
 public sealed class ArchipelagoPanel : IPanel
 {
     const string ServerKey = "Archipelago.Server";
@@ -40,8 +41,10 @@ public sealed class ArchipelagoPanel : IPanel
         ApClient.Connect(_server, _slot, _password);
     }
 
-    // The map window (ArchipelagoMod registers both), opened from here.
-    public MapPanel? Map { get; set; }
+    // The other windows (ArchipelagoMod registers them), opened and closed from here.
+    public (string Label, IPanel Panel)[] OtherWindows { get; set; } = [];
+
+    const float LogLines = 9;
 
     public string Name => "Archipelago";
     public string TitleKey => "panel.archipelago";
@@ -49,7 +52,7 @@ public sealed class ArchipelagoPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(500, 600), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(480, 420), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
         {
@@ -60,6 +63,8 @@ public sealed class ArchipelagoPanel : IPanel
 
         DrawStatusLine();
         DrawConnection();
+        ImGui.Spacing();
+        DrawWindowButtons();
         if (ApClient.HasSeed)
         {
             ImGui.Spacing();
@@ -67,9 +72,8 @@ public sealed class ArchipelagoPanel : IPanel
             DrawSeed();
         }
         ImGui.Spacing();
-        if (ImGui.CollapsingHeader("Details")) DrawDetails();
-        ImGui.SeparatorText("Log");
-        DrawLog();
+        if (UiOptions.Section("Details", "connection.details", false)) DrawDetails();
+        if (UiOptions.Section("Log", "connection.log", false)) DrawLog();
 
         IsOpen = open;
         ImGui.End();
@@ -136,17 +140,29 @@ public sealed class ArchipelagoPanel : IPanel
         RecompOne.Runtime.Runtime.SaveView();
     }
 
+    // ---- the other windows ----
+
+    // A button per window, lit while it's open.
+    void DrawWindowButtons()
+    {
+        for (int i = 0; i < OtherWindows.Length; i++)
+        {
+            var (label, panel) = OtherWindows[i];
+            if (i > 0) ImGui.SameLine();
+            bool open = panel.IsOpen;
+            if (open) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonActive));
+            if (ImGui.Button(label)) panel.IsOpen = !open;
+            if (open) ImGui.PopStyleColor();
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(open ? $"Close the {label.ToLowerInvariant()} window." : $"Open the {label.ToLowerInvariant()} window.");
+        }
+    }
+
     // ---- the seed ----
 
     void DrawSeed()
     {
         ImGui.Text($"{ApClient.SlotName}, seed {ApClient.SeedName}");
         ImGui.Text($"{ApClient.CheckedCount} of {ApClient.LocationCount} locations checked");
-        if (Map != null)
-        {
-            ImGui.SameLine();
-            if (ImGui.SmallButton(Map.IsOpen ? "Close map" : "Open map")) Map.IsOpen = !Map.IsOpen;
-        }
         if (!SeedPlan.Ready) ImGui.TextDisabled("Getting the seed ready...");
 
         var m = RecompOne.Runtime.Runtime.Mem;
@@ -195,7 +211,8 @@ public sealed class ArchipelagoPanel : IPanel
         ImGui.SameLine();
         ImGui.Checkbox("Auto-scroll", ref _autoScroll);
 
-        if (ImGui.BeginChild("##aplog", Vector2.Zero, ImGuiChildFlags.Border))
+        float height = ImGui.GetTextLineHeightWithSpacing() * LogLines + ImGui.GetStyle().WindowPadding.Y * 2;
+        if (ImGui.BeginChild("##aplog", new Vector2(0, height), ImGuiChildFlags.Border))
         {
             foreach (var line in Log.Snapshot())
             {
