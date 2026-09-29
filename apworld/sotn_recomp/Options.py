@@ -1,86 +1,137 @@
 from dataclasses import dataclass
-from BaseClasses import MultiWorld
-from Options import (OptionGroup, Toggle, Choice, Range, FreeText, ItemsAccessibility, StartInventoryPool,
+from Options import (OptionGroup, Toggle, Choice, Range, ItemsAccessibility, StartInventoryPool,
                      PerGameCommonOptions)
 
-
-class OpenedNO4NO3(Choice):
-    """Determines the behavior for the back door from Entrance to Underground Cavern
-    closed: The door will be closed as in vanilla
-    open: The door will be open after reaching Alchemy Laboratory, ensuring the Death cutscene
-    open_early: The door will be open from the start, allowing you to break the Death cutscene"""
-    display_name = "Opened NO4 Backdoor"
-    option_closed = 0
-    option_open = 1
-    option_open_early = 2
-    default = 0
+# "Key items" below are the items the logic can need: the relics, the Gold and Silver rings, the Spike breaker
+# and the Holy glasses.
 
 
-class OpenedDAIARE(Toggle):
-    """
-        If true, the back door from Chapel to Colosseum will be open
-    """
-    display_name = "Opened ARE Backdoor"
+# ---- Item pool ----
 
-
-class Extension(Choice):
-    """relic_prog: Only relics, silver/gold rings, spike breaker and holy glasses locations are checks
-    guarded: All of the above, plus most items guarded by bosses
-    equipment: All of the above, plus most floor equipment
-    full: Every location on the map is added to the pool"""
+class ItemPool(Choice):
+    """Which spots hold items from the multiworld. The others keep their vanilla item (or get shuffled, with
+    randomize_other_items).
+    key_items: only the spots that hold key items in the vanilla game.
+    guarded: those, plus most items guarded by bosses.
+    equipment: those, plus most of the equipment lying around.
+    everything: every item spot in the castle."""
     display_name = "Item pool"
-    option_relic_prog = 0
+    option_key_items = 0
     option_guarded = 1
     option_equipment = 2
-    option_full = 3
+    option_everything = 3
+    alias_relic_prog = 0
+    alias_full = 3
     default = 3
 
 
-class InfiniteWing(Toggle):
-    """
-        Makes wing smash continue until you hit a wall or run out of MP (cancellable by exiting bat form)
-    """
-    display_name = "Infinite wing smash"
+class RandomizeOtherItems(Toggle):
+    """The vanilla items of the spots that aren't in the item pool are shuffled among those spots."""
+    display_name = "Shuffle the other items"
 
 
-class RandomizeNonLocations(Toggle):
-    """
-        Will randomize items not chosen from the item_pool setting
-    """
-    display_name = "Randomize extra items"
-
-
-class ExtraPool(Toggle):
-    """
-        Try to add powerful items to the pool: Duplicator, Crissaegrim, Ring of varda, Mablung sword, Masamune, Marsil, Yasutsuna
-    """
+class PowerfulItems(Toggle):
+    """Puts the game's most powerful items in: Duplicator, Crissaegrim, Ring of varda, Mablung sword, Masamune,
+    Marsil and Yasutsuna, each in place of another item (in the item pool, or with randomize_other_items at one
+    of the other spots)."""
     display_name = "Powerful items"
 
 
-class BossLocations(Toggle):
-    """Boss drops would be part of the seed pool."""
-    display_name = "Make boss drops part of the pool"
+class BossDrops(Toggle):
+    """The items the 13 bosses drop when beaten are checks. Your own key items are never put there: a drop you
+    leave behind is gone for good."""
+    display_name = "Boss drops"
 
 
 class Enemysanity(Toggle):
-    """Hitting an enemy becomes a check. Extra locations will be added based on difficult
-    easy: Duplicate relics and progression items adds 50 extra vessels and random equipments
-    normal: Duplicate progression items adds 35 extra vessels and random equipments
-    hard: 15 extra vessels and random equipments"""
+    """Each kind of enemy is a check the first time it gets into your enemy list (141 checks). What fills them
+    depends on difficulty:
+    easy: a second copy of every key item, plus 50 vessels and 50 pieces of equipment.
+    normal: a second Gold ring, Silver ring, Spike breaker and Holy glasses, plus 35 vessels and 35 pieces of
+    equipment.
+    hard: 15 vessels and 15 pieces of equipment.
+    very_hard: nothing extra.
+    The rest is filler (fruit)."""
     display_name = "Enemysanity"
 
 
-class EnemyScroll(Toggle):
-    """Enemysanity require Faerie Scroll"""
-    display_name = "Enemysanity require Spirit Orb"
+class EnemysanityNeedsFaerieScroll(Toggle):
+    """Enemysanity checks only count once you have the Faerie scroll (enemies met before then count once you
+    get it)."""
+    display_name = "Enemysanity needs the Faerie scroll"
 
 
-class Difficult(Choice):
-    """easy: 50% less monster HP, attack and defense and drop chance increased
-    normal: All vanilla stats
-    hard: 50% more monster HP, attack and defense
-    very_hard: 100% more monster HP, attack, and defense"""
-    display_name = "Difficult"
+# ---- Castle ----
+
+class CavernsBackDoor(Choice):
+    """The back door between the Castle Entrance and the Underground Caverns.
+    closed: closed, as in the vanilla game (opened from the Caverns side).
+    open_after_alchemy_lab: open once you've been to the Alchemy Laboratory.
+    open_from_start: open from the start, so you can get to it before meeting Death at the entrance."""
+    display_name = "Caverns back door"
+    option_closed = 0
+    option_open_after_alchemy_lab = 1
+    option_open_from_start = 2
+    alias_open = 1
+    alias_open_early = 2
+    default = 0
+
+
+class ColosseumBackDoor(Toggle):
+    """The back door between the Royal Chapel and the Colosseum is open from the start."""
+    display_name = "Colosseum back door"
+
+
+class OpenShortcuts(Toggle):
+    """The castle's shortcuts are open from the start: from the Castle Entrance to the Underground Caverns, to the
+    Marble Gallery and to its warp room, from Olrox's Quarters and from the Colosseum to the Royal Chapel, and the
+    one in the inverted castle's Entrance. The logic doesn't count on them."""
+    display_name = "Open shortcuts"
+
+
+class StartingArea(Choice):
+    """After the first Warg at the entrance, you're taken to a random room and play on from there.
+    vanilla: you aren't; the game goes on from the entrance.
+    random_castle: a room in the castle.
+    random_inverted_castle: a room in the inverted castle (Leap stone and Gravity boots work there until you
+    reach the castle).
+    random_anywhere: a room in either.
+    The logic doesn't take the new start into account."""
+    display_name = "Starting area"
+    option_vanilla = 0
+    option_random_castle = 1
+    option_random_inverted_castle = 2
+    option_random_anywhere = 3
+    alias_normal_castle = 1
+    alias_reverse_castle = 2
+    alias_any_castle = 3
+    default = 0
+
+
+class InvertedLibraryCard(Toggle):
+    """Hold down while using a Library card to go to the inverted castle's library instead (once Richter is
+    saved)."""
+    display_name = "Library card to the inverted castle"
+
+
+class SkipClockTowerPuzzle(Toggle):
+    """No gear puzzle in the Clock Tower: hitting any of the gears once opens the secret door."""
+    display_name = "Skip the Clock Tower puzzle"
+
+
+class NoLogic(Toggle):
+    """Items go anywhere, without logic: the seed can need glitches, or be unbeatable."""
+    display_name = "No logic"
+
+
+# ---- Enemies and drops ----
+
+class Difficulty(Choice):
+    """easy: enemies have half their HP, attack and defence and always drop their items; the shop costs 50-75%.
+    normal: the vanilla game.
+    hard: enemies have 1.5 times their HP, attack and defence; the shop costs 100-125%.
+    very_hard: enemies have twice their HP, attack and defence; the shop costs 125-150%."""
+    display_name = "Difficulty"
     option_easy = 0
     option_normal = 1
     option_hard = 2
@@ -88,22 +139,30 @@ class Difficult(Choice):
     default = 1
 
 
-class EnemyModifier(Range):
-    """Modifier for monster HP, attack and defense, override difficult preset
-    Any number above 100 increase the attribute and bellow decrease. 24 means OFF"""
-    display_name = "Enemy modifier"
+class EnemyStrength(Range):
+    """Enemy HP, attack and defence as a percentage of the vanilla values (25-200), instead of what difficulty
+    sets. use_difficulty: leave it to difficulty."""
+    display_name = "Enemy strength"
     range_start = 24
     range_end = 200
     default = 24
+    special_range_names = {"use_difficulty": 24}
 
 
-class DropModifier(Choice):
-    """Modifier for monster drop. Override difficult preset
-    normal: Drop chance is not modified
-    increase: increase the odds of a drop
-    abundant: increase further odds of a drop
-    guaranteed: guarantees drops for every enemy that has one. Ring of arcana makes them drop their rare item instead"""
-    display_name = "Drop modifier"
+class RandomEnemyStats(Toggle):
+    """Each enemy gets random HP, attack and defence (25-200% of the vanilla values; difficulty or
+    enemy_strength replaces this part with its own scaling), and a random attack element, weaknesses and
+    resistances."""
+    display_name = "Random enemy stats"
+
+
+class DropRate(Choice):
+    """How often enemies drop their items.
+    normal: as difficulty sets (the vanilla rates, or always on easy).
+    increased: more often.
+    abundant: more often still.
+    guaranteed: every enemy that has a drop always drops; with the Ring of arcana, its rare one."""
+    display_name = "Drop rate"
     option_normal = 0
     option_increased = 1
     option_abundant = 2
@@ -111,24 +170,129 @@ class DropModifier(Choice):
     default = 0
 
 
-class RandomStartGear(Toggle):
-    """Randomize starting equipment"""
-    display_name = "Randomize starting equipment"
+class EnemyDrops(Choice):
+    """What enemies drop.
+    vanilla: the vanilla drops.
+    shuffled: the vanilla drops, shuffled between enemies.
+    same_type: each drop is a random item of the same kind (a weapon for a weapon, a potion for a potion...).
+    any_item: each drop is any random item."""
+    display_name = "Enemy drops"
+    option_vanilla = 0
+    option_shuffled = 1
+    option_same_type = 2
+    option_any_item = 3
+    default = 0
+
+
+class EnemyDropsIncludeHeartsAndGold(Toggle):
+    """With enemy_drops, the hearts, gold and other small drops any enemy can leave change too."""
+    display_name = "Enemy drops: hearts and gold too"
+
+
+class EnemyDropsCanBeKeyItems(Toggle):
+    """With enemy_drops same_type or any_item, a drop can be a Gold ring, Silver ring, Spike breaker or Holy
+    glasses: extra copies, outside the logic."""
+    display_name = "Enemy drops: can be key items"
+
+
+class CandleDrops(Choice):
+    """What candles drop (not the ones with the Stopwatch).
+    vanilla: the vanilla items.
+    shuffled: the vanilla items, shuffled between candles.
+    same_type: each is a random item of the same kind, never a key item.
+    any_item: each is any random item, never a key item.
+    any_item_with_key_items: any random item, including the Gold ring, Silver ring, Spike breaker and Holy
+    glasses (extra copies, outside the logic)."""
+    display_name = "Candle drops"
+    option_vanilla = 0
+    option_shuffled = 1
+    option_same_type = 2
+    option_any_item = 3
+    option_any_item_with_key_items = 4
+    alias_off = 0
+    alias_simple = 1
+    alias_type = 2
+    alias_full = 3
+    alias_full_progression = 4
+    default = 0
+
+
+# ---- Shop and equipment ----
+
+class ShopStock(Choice):
+    """What the Librarian sells.
+    vanilla: the vanilla stock.
+    random_items: random items, which can be key items (extra copies, outside the logic).
+    random_non_key_items: random items, never a key item."""
+    display_name = "Shop stock"
+    option_vanilla = 0
+    option_random_items = 1
+    option_random_non_key_items = 2
+    default = 0
+
+
+class ShopSellsLibraryCard(Toggle):
+    """With random items in shop_stock, the Librarian still sells the Library card."""
+    display_name = "Shop sells the Library card"
+
+
+class RandomShopPrices(Toggle):
+    """Shop prices are random, 50-150% of the vanilla prices, instead of what difficulty sets."""
+    display_name = "Random shop prices"
+
+
+class RandomStartingEquipment(Toggle):
+    """Alucard starts with a random weapon, shield, helmet, armour, cloak and accessory, never a key item."""
+    display_name = "Random starting equipment"
+
+
+class KeepStartingEquipment(Toggle):
+    """Death doesn't take Alucard's equipment at the entrance."""
+    display_name = "Death doesn't take your equipment"
+
+
+# ---- Quality of life ----
+
+class SkipPrologue(Toggle):
+    """A new game starts with Alucard, without Richter's fight with Dracula."""
+    display_name = "Skip the prologue"
+
+
+class InfiniteWingSmash(Toggle):
+    """Wing smash keeps going until you hit a wall or run out of MP (leave bat form to stop it)."""
+    display_name = "Infinite wing smash"
+
+
+class MagicVessels(Toggle):
+    """Heart Vessels also raise max MP by 3 and refill MP."""
+    display_name = "Magic vessels"
+
+
+class NoScreenFreezes(Toggle):
+    """The game doesn't pause when you level up or pick up a relic or a vessel."""
+    display_name = "No screen freezes"
+
+
+class FastWarp(Toggle):
+    """Faster animation when using a warp room."""
+    display_name = "Fast warp"
+
+
+class HealAtSaveRooms(Toggle):
+    """Entering a save room restores HP and MP."""
+    display_name = "Heal at save rooms"
 
 
 class DeathLink(Toggle):
-    """When you die, everyone who enabled death link dies. Of course, the reverse is true too."""
-    display_name = "Death link"
+    """When you die, everyone else with DeathLink on dies too, and the other way round."""
+    display_name = "DeathLink"
 
 
-class RemovePrologue(Toggle):
-    """Remove prologue fight"""
-    display_name = "No prologue"
-
+# ---- Cosmetic ----
 
 class MapColor(Choice):
-    """Change map colors"""
-    display_name = "Map colors"
+    """Colour of the map (the pause map, and the mod's map window)."""
+    display_name = "Map colour"
     option_default = 0
     option_dark_blue = 1
     option_crimson = 2
@@ -143,8 +307,8 @@ class MapColor(Choice):
 
 
 class AlucardPalette(Choice):
-    """Change Alucard palette colors"""
-    display_name = "Alucard palette"
+    """Alucard's colours."""
+    display_name = "Alucard's colours"
     option_default = 0
     option_bloody_tears = 1
     option_blue_danube = 2
@@ -156,222 +320,126 @@ class AlucardPalette(Choice):
     default = 0
 
 
-class AlucardLiner(Choice):
-    """Change Alucard liner colors"""
-    display_name = "Alucard liner"
-    option_gold_trim = 0
-    option_bronze_trim = 1
-    option_silver_trim = 2
-    option_onyx_trim = 3
-    option_coral_trim = 4
+class CapeLining(Choice):
+    """Colour of the lining of Alucard's cape."""
+    display_name = "Cape lining"
+    option_gold = 0
+    option_bronze = 1
+    option_silver = 2
+    option_onyx = 3
+    option_coral = 4
+    alias_gold_trim = 0
+    alias_bronze_trim = 1
+    alias_silver_trim = 2
+    alias_onyx_trim = 3
+    alias_coral_trim = 4
     default = 0
 
 
-class MagicVessels(Toggle):
-    """Replace heart max up with magic max up"""
-    display_name = "Magic vessels"
-
-
-class AntiFreeze(Toggle):
-    """Remove screen freezes on level-up, relic and vessels acquisition"""
-    display_name = "Anti freeze"
-
-
-class MyPurse(Toggle):
-    """Prevent Death from stealing your gear"""
-    display_name = "That's my purse"
-
-
-class FastWarp(Toggle):
-    """Quickens warp animation when using teleporters"""
-    display_name = "Fast warp"
-
-
-class UnlockedMode(Toggle):
-    """Opens all five shorcuts in first castle and one in second castle
-    Might break logic"""
-    display_name = "Unlocked mode"
+class RandomColors(Toggle):
+    """Random colours for Alucard's cape, the Gravity boots trail, Hydro storm, wing smash, Richter, Dracula's
+    cape and Maria."""
+    display_name = "Random colours"
 
 
 class RelicSurprise(Toggle):
-    """All relics are hidden behind the same sprite and palette.
-    The player cannot tell what the relic is until the collect it"""
-    display_name = "Relic surprise!"
+    """Every relic looks the same: you only find out which one it is when you pick it up."""
+    display_name = "Relic surprise"
 
 
-class EnemyStats(Toggle):
-    """Enemy stats are randomized ranging from 25% to 200% of their original value and their attack and defense types
-    are randomized to include random elements. Modification options WILL OVERRIDE THIS OPTION"""
-    display_name = "Enemy stats"
-
-
-class RandomShopStock(Choice):
-    """Randomize items sold by Librarian
-    on: Any item can appear at shop
-    on_lib: Any item can appear at shop and enforcing a Library card on sale
-    on_no_prog: Any item can appear at shop and no progression item will appear
-    on_no_prog_lib: No progression item can appear at shop enforcing a Library card on sale"""
-    display_name = "Randomize shop stock"
-    option_off = 0
-    option_on = 1
-    option_on_lib = 2
-    option_on_no_prog = 3
-    option_on_no_prog_lib = 4
-    default = 0
-
-
-class ShopPrices(Toggle):
-    """Randomize shop prices between 50% to 150%. OVERRIDE difficult preset"""
-    display_name = "Shop prices"
-
-
-class StartingZone(Choice):
-    """Start in the entrance as usual but after the first Warg, you are teleported to a random zone to start the
-    rest of your run. (Could break logic)
-    vanilla: Normal entrance
-    normal_castle: Your random room will be on the first castle
-    reverse_castle: Your random room will be on the reverse castle
-    any_castle: Your random room could be anywhere"""
-    option_vanilla = 0
-    option_normal_castle = 1
-    option_reverse_castle = 2
-    option_any_castle = 3
-    default = 0
-    display_name = "Starting zone"
-
-
-class ReverseLibraryCard(Toggle):
-    """Adds a new function to library cards. Hold down while using them to take Alucard to the second castle library
-    after Richter is saved"""
-    display_name = "Reverse library card"
-
-
-class RandomizeMusic(Toggle):
-    """Randomize the game music"""
-    display_name = "Randomize music"
-
-
-class SkipClockTowerPuzzle(Toggle):
-    """Disable rotating gears clock tower puzzle. Hitting any gear once opens the secret door"""
-    display_name = "Clock tower puzzle"
-
-
-class NoLogic(Toggle):
-    """There is logic. Seed might be unbeatable. Heavy on glitch knowledge"""
-    display_name = "No logic rules"
-
-
-class AutoHeal(Toggle):
-    """
-        Entering a save room heal Alucard
-    """
-    display_name = "Heal when enter a save room"
-
-
-class ColorRandomizer(Toggle):
-    """Randomize various color paletter. Ex: Cape colors, gravity boots trail, hydrostorm"""
-    display_name = "Color randomizer"
-
-
-class RandomizeDrop(Choice):
-    """Randomize enemy drops
-    simple: Only randomize between each enemy drop
-    simple_global: Only randomize between each enemy drop including global drops
-    type: Randomize within the same item type
-    type_global: Randomize within the same item type including global drops
-    type_progression: Randomize within the same item type and have a chance on progression items
-    type_progression_global: Randomize within the same item type and include global drops having a chance on progression items
-    full: Every drop is random
-    full_global: Every drop is random including global drops
-    full_progression: Every drop is random and have a chance on progression items
-    full_progression_global: Every drop is random and include global drops having a chance on progression items"""
-    option_off = 0
-    option_simple = 1
-    option_simple_global = 2
-    option_type = 3
-    option_type_global = 4
-    option_type_progression = 5
-    option_type_progression_global = 6
-    option_full = 7
-    option_full_global = 8
-    option_full_progression = 9
-    option_full_progression_global = 10
-    default = 0
-    display_name = "Randomize enemy drops"
-
-
-class RandomizeCandles(Choice):
-    """Randomize candles. Vanilla candles with Stopwatch are not randomized
-    simple: Only randomize between each candle
-    type: Randomize keeping the same item type
-    random: Full randomized items
-    random_progression: Full randomized include chance of progression items"""
-    option_off = 0
-    option_simple = 1
-    option_type = 2
-    option_full = 3
-    option_full_progression = 4
+class RandomMusic(Toggle):
+    """Each area plays a random song."""
+    display_name = "Random music"
 
 
 @dataclass
 class SOTNOptions(PerGameCommonOptions):
     accessibility: ItemsAccessibility
     start_inventory_from_pool: StartInventoryPool
-    open_no4: OpenedNO4NO3
-    open_are: OpenedDAIARE
-    item_pool: Extension
-    infinite_wing_smash: InfiniteWing
-    randomize_items: RandomizeNonLocations
-    powerful_items: ExtraPool
-    boss_locations: BossLocations
+    item_pool: ItemPool
+    randomize_other_items: RandomizeOtherItems
+    powerful_items: PowerfulItems
+    boss_drops: BossDrops
     enemysanity: Enemysanity
-    enemy_scroll: EnemyScroll
-    difficult: Difficult
-    enemy_mod: EnemyModifier
-    drop_mod: DropModifier
-    rng_start_gear: RandomStartGear
+    enemysanity_needs_faerie_scroll: EnemysanityNeedsFaerieScroll
+    caverns_back_door: CavernsBackDoor
+    colosseum_back_door: ColosseumBackDoor
+    open_shortcuts: OpenShortcuts
+    starting_area: StartingArea
+    inverted_library_card: InvertedLibraryCard
+    skip_clock_tower_puzzle: SkipClockTowerPuzzle
+    no_logic: NoLogic
+    difficulty: Difficulty
+    enemy_strength: EnemyStrength
+    random_enemy_stats: RandomEnemyStats
+    drop_rate: DropRate
+    enemy_drops: EnemyDrops
+    enemy_drops_include_hearts_and_gold: EnemyDropsIncludeHeartsAndGold
+    enemy_drops_can_be_key_items: EnemyDropsCanBeKeyItems
+    candle_drops: CandleDrops
+    shop_stock: ShopStock
+    shop_sells_library_card: ShopSellsLibraryCard
+    random_shop_prices: RandomShopPrices
+    random_starting_equipment: RandomStartingEquipment
+    keep_starting_equipment: KeepStartingEquipment
+    skip_prologue: SkipPrologue
+    infinite_wing_smash: InfiniteWingSmash
+    magic_vessels: MagicVessels
+    no_screen_freezes: NoScreenFreezes
+    fast_warp: FastWarp
+    heal_at_save_rooms: HealAtSaveRooms
     death_link: DeathLink
-    remove_prologue: RemovePrologue
     map_color: MapColor
     alucard_palette: AlucardPalette
-    alucard_liner: AlucardLiner
-    magic_vessels: MagicVessels
-    anti_freeze: AntiFreeze
-    my_purse: MyPurse
-    fast_warp: FastWarp
-    unlocked_mode: UnlockedMode
-    relic_suprise: RelicSurprise
-    enemy_stats: EnemyStats
-    random_shop: RandomShopStock
-    shop_prices: ShopPrices
-    starting_zone: StartingZone
-    reverse_library: ReverseLibraryCard
-    random_music: RandomizeMusic
-    skip_nz1: SkipClockTowerPuzzle
-    no_logic: NoLogic
-    auto_heal: AutoHeal
-    color_randomizer: ColorRandomizer
-    randomize_drop: RandomizeDrop
-    randomize_candles: RandomizeCandles
+    cape_lining: CapeLining
+    random_colors: RandomColors
+    relic_surprise: RelicSurprise
+    random_music: RandomMusic
 
 
 sotn_option_groups = [
-    OptionGroup("Item Pool", [
-        Extension, Enemysanity, ExtraPool, BossLocations,
+    OptionGroup("Item pool", [
+        ItemPool, RandomizeOtherItems, PowerfulItems, BossDrops, Enemysanity, EnemysanityNeedsFaerieScroll,
     ]),
-    OptionGroup("Gameplay Tweaks", [
-        OpenedNO4NO3, OpenedDAIARE,  RandomizeNonLocations, EnemyScroll, Difficult, EnemyModifier, DropModifier,
-        RandomizeDrop, RandomizeCandles, RandomStartGear, DeathLink, RandomShopStock, UnlockedMode, RelicSurprise,
-        EnemyStats, ShopPrices, StartingZone, ReverseLibraryCard, NoLogic
+    OptionGroup("Castle", [
+        CavernsBackDoor, ColosseumBackDoor, OpenShortcuts, StartingArea, InvertedLibraryCard, SkipClockTowerPuzzle,
+        NoLogic,
     ]),
-    OptionGroup("QOL", [
-        InfiniteWing,  RemovePrologue,  MagicVessels, AntiFreeze, MyPurse, FastWarp, SkipClockTowerPuzzle, AutoHeal
+    OptionGroup("Enemies and drops", [
+        Difficulty, EnemyStrength, RandomEnemyStats, DropRate, EnemyDrops, EnemyDropsIncludeHeartsAndGold,
+        EnemyDropsCanBeKeyItems, CandleDrops,
     ]),
-    OptionGroup("Cosmetics", [
-        MapColor, AlucardPalette, AlucardLiner, RandomizeMusic, ColorRandomizer
-    ])
+    OptionGroup("Shop and equipment", [
+        ShopStock, ShopSellsLibraryCard, RandomShopPrices, RandomStartingEquipment, KeepStartingEquipment,
+    ]),
+    OptionGroup("Quality of life", [
+        SkipPrologue, InfiniteWingSmash, MagicVessels, NoScreenFreezes, FastWarp, HealAtSaveRooms, DeathLink,
+    ]),
+    OptionGroup("Cosmetic", [
+        MapColor, AlucardPalette, CapeLining, RandomColors, RelicSurprise, RandomMusic,
+    ]),
 ]
 
 
+def enemy_drops_mode(options: SOTNOptions) -> int:
+    """The enemy_drops options as Rom.randomize_drop's mode (upstream's single option): 0 off, 1-2 shuffled,
+    3-6 same type, 7-10 random; +1 with hearts and gold, +2 with key items (not for shuffled)."""
+    kind = options.enemy_drops.value
+    if kind == EnemyDrops.option_vanilla:
+        return 0
+    extra = 1 if options.enemy_drops_include_hearts_and_gold.value else 0
+    if kind == EnemyDrops.option_shuffled:
+        return 1 + extra
+    if options.enemy_drops_can_be_key_items.value:
+        extra += 2
+    return (3 if kind == EnemyDrops.option_same_type else 7) + extra
 
 
+def shop_stock_mode(options: SOTNOptions) -> int:
+    """The shop options as Rom.randomize_shop's mode (upstream's single option): 0 off, 1 random, 3 random
+    without key items; +1 with the Library card."""
+    stock = options.shop_stock.value
+    if stock == ShopStock.option_vanilla:
+        return 0
+    mode = 1 if stock == ShopStock.option_random_items else 3
+    return mode + (1 if options.shop_sells_library_card.value else 0)

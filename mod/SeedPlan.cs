@@ -281,7 +281,7 @@ static class SeedPlan
             Write(m, list);
         }
 
-        // drop_mod guaranteed (and easy): Rom.py patches the drop choice in DRA, which the recomp reads
+        // drop_rate guaranteed (and easy): Rom.py patches the drop choice in DRA, which the recomp reads
         // (RandoPatch.func_800FF494), and the luck roll in every stage's HitDetection, which it doesn't.
         // The recomp's own "always drop" switch (RandoPatch.func_800FF460) covers the roll.
         if (m.ReadU32(GuaranteedDropSite) == GuaranteedDropWord1 && m.ReadU32(GuaranteedDropSite + 4) == GuaranteedDropWord2)

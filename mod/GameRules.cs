@@ -6,7 +6,7 @@ using Sotn;
 
 namespace SotnArchipelago;
 
-// Per-frame game-side rules from the BizHawk client, adapted: DeathLink, auto_heal, soft-lock
+// Per-frame game-side rules from the BizHawk client, adapted: DeathLink, heal_at_save_rooms, soft-lock
 // escapes, the Cave demon wall, and the zone/room keys the tracker can read.
 static class GameRules
 {
@@ -121,18 +121,18 @@ static class GameRules
         ApClient.SendDeath($"{ApClient.SlotName} died{where}");
     }
 
-    // ---- auto_heal ----
+    // ---- heal_at_save_rooms ----
 
     static void AutoHeal(IMemory m)
     {
-        if (ApClient.OptionInt("auto_heal") == 0) return;
+        if (ApClient.OptionInt("heal_at_save_rooms") == 0) return;
         if ((m.ReadU8(Game.CanSaveAddr) & Game.CanSaveMask) != Game.CanSaveMask) return;
         uint hpMax = m.ReadU32(HpMaxAddr), mpMax = m.ReadU32(MpMaxAddr);
         if (m.ReadU32(HpAddr) != hpMax) m.WriteU32(HpAddr, hpMax);
         if (m.ReadU32(MpAddr) != mpMax) m.WriteU32(MpAddr, mpMax);
     }
 
-    // ---- open_no4, open_are, unlocked_mode ----
+    // ---- caverns_back_door, colosseum_back_door, open_shortcuts ----
     // Rom.py makes the doors, levers and blocks involved read their castle flag as set ('li v0,1'); the
     // recomp doesn't read those code bytes, so set the flags themselves, as opening them in play would.
     const int EntranceToCaverns = 0x30, EntranceToMarble = 0x31, EntranceWarp = 0x32;
@@ -141,15 +141,15 @@ static class GameRules
 
     static void OpenShortcuts(IMemory m, int stage)
     {
-        if (ApClient.OptionInt("unlocked_mode") > 0)
+        if (ApClient.OptionInt("open_shortcuts") > 0)
             foreach (int flag in new[] { EntranceToCaverns, EntranceToMarble, EntranceWarp, ChapelStatue, ColosseumToChapel })
                 SetFlag(m, flag);
 
-        // open (1): from the entrance after visiting the Alchemy Laboratory; open_early (2): from the start.
-        int no4 = ApClient.OptionInt("open_no4");
+        // open_after_alchemy_lab (1): from the entrance after visiting the Alchemy Laboratory; open_from_start (2).
+        int no4 = ApClient.OptionInt("caverns_back_door");
         if (no4 == 2 || no4 == 1 && stage == CastleEntranceAfterAlchemyLab) SetFlag(m, EntranceToCaverns);
 
-        if (ApClient.OptionInt("open_are") > 0) SetFlag(m, ColosseumToChapel);
+        if (ApClient.OptionInt("colosseum_back_door") > 0) SetFlag(m, ColosseumToChapel);
     }
 
     static void SetFlag(IMemory m, int flag)

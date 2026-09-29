@@ -9,6 +9,7 @@ from .Items import (tile_id_offset, relic_id_to_name, items, weapon1, shield, ar
                     swap_in_powerful)
 from .Locations import locations
 from .Enemies import enemy_dict, enemy_stats_list, enemy_atk_type_list, enemy_weak_type_list
+from .Options import enemy_drops_mode, shop_stock_mode
 from .data.Constants import (RELIC_NAMES, SLOT, slots, equip_id_offset, equip_inv_id_offset,
                              faerie_scroll_force_addresses, shop_item_data, start_room_data, music, music_by_area)
 from .data.io_items import io_items, tile_filter, type_filter, io_item_name
@@ -687,7 +688,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
     option_names: List[str] = [option_name for option_name in world.options_dataclass.type_hints if
                                option_name != "plando_items"]
     options_dict = world.options.as_dict(*option_names)
-    randomize_items = options_dict["randomize_items"]
+    randomize_items = options_dict["randomize_other_items"]
 
     # Patch Maria dialog to prevent player stuck after Hippogryph
     patch.write_token(APTokenTypes.WRITE, 0x0632f4cc, (0x1000000b).to_bytes(4, "little"))  # je, r0, r0
@@ -1258,14 +1259,14 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
     The flag that get set on NO2 switch: 0x03be4c and the instruction is jz, r2, 801c1028 on 0x46c0968 we patched
     to jne r0, r0 so it never branch.
     """
-    if options_dict["open_no4"] != 0:
-        if options_dict["open_no4"] == 1:
+    if options_dict["caverns_back_door"] != 0:
+        if options_dict["caverns_back_door"] == 1:
             patch.write_token(APTokenTypes.WRITE, 0x05430404, (0x14000005).to_bytes(4, "little"))
-        if options_dict["open_no4"] == 2:
+        if options_dict["caverns_back_door"] == 2:
             patch.write_token(APTokenTypes.WRITE, 0x4ba8798, (0x14000005).to_bytes(4, "little"))
             patch.write_token(APTokenTypes.WRITE, 0x05430404, (0x14000005).to_bytes(4, "little"))
 
-    if options_dict["open_are"]:
+    if options_dict["colosseum_back_door"]:
         patch.write_token(APTokenTypes.WRITE, 0x0440110c, (0x14000066).to_bytes(4, "little"))
 
     """
@@ -1280,32 +1281,32 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
     shop_price_max = -10
     drop_mod = 0
 
-    if options_dict["difficult"] != 1:
-        if options_dict["difficult"] == 0:
+    if options_dict["difficulty"] != 1:
+        if options_dict["difficulty"] == 0:
             enemy_mod = 50 / 100
             shop_price_min = 50
             shop_price_max = 75
             drop_mod = 3
-        elif options_dict["difficult"] == 2:
+        elif options_dict["difficulty"] == 2:
             enemy_mod = 150 / 100
             shop_price_min = 100
             shop_price_max = 125
-        elif options_dict["difficult"] == 3:
+        elif options_dict["difficulty"] == 3:
             enemy_mod = 200 / 100
             shop_price_min = 125
             shop_price_max = 150
 
-    if options_dict["enemy_mod"] >= 25:
-        enemy_mod = options_dict["enemy_mod"] / 100
+    if options_dict["enemy_strength"] >= 25:
+        enemy_mod = options_dict["enemy_strength"] / 100
 
-    if enemy_mod != 0 or options_dict["enemy_stats"]:
-        enemy_stat_rando(enemy_mod, options_dict["enemy_stats"], world, patch)
+    if enemy_mod != 0 or options_dict["random_enemy_stats"]:
+        enemy_stat_rando(enemy_mod, options_dict["random_enemy_stats"], world, patch)
 
-    if options_dict["drop_mod"] != 0:
-        drop_mod = options_dict["drop_mod"]
+    if options_dict["drop_rate"] != 0:
+        drop_mod = options_dict["drop_rate"]
 
     if drop_mod != 0:
-        # Upstream passed options_dict["drop_mod"] here, which is 0 for easy difficulty with drop_mod
+        # Upstream passed options_dict["drop_rate"] here, which is 0 for easy difficulty with drop_mod
         # left at normal: every drop rate became 0 instead of the easy-difficulty drop boost.
         modify_drop(drop_mod, patch)
 
@@ -1315,10 +1316,10 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
         # @ RAM 1173c8
         patch.write_token(APTokenTypes.WRITE, 0x00134990, (0x00000000).to_bytes(4, "little"))
 
-    if options_dict["rng_start_gear"]:
+    if options_dict["random_starting_equipment"]:
         randomize_starting_equipment(world, patch)
 
-    if options_dict["remove_prologue"]:
+    if options_dict["skip_prologue"]:
         no_prologue(patch)
 
     map_colors_value = options_dict["map_color"]
@@ -1329,43 +1330,43 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
     if alucard_palette_value != 0:
         alucard_palette(alucard_palette_value, patch)
 
-    alucard_liner(options_dict["alucard_liner"], patch)
+    alucard_liner(options_dict["cape_lining"], patch)
 
     if options_dict["magic_vessels"]:
         magic_max(patch)
 
-    if options_dict["anti_freeze"]:
+    if options_dict["no_screen_freezes"]:
         anti_freeze(patch)
 
-    if options_dict["my_purse"]:
+    if options_dict["keep_starting_equipment"]:
         my_purse(patch)
 
     if options_dict["fast_warp"]:
         fast_warp(patch)
 
-    if options_dict["unlocked_mode"]:
+    if options_dict["open_shortcuts"]:
         unlocked_patches(patch)
 
-    if options_dict["relic_suprise"]:
+    if options_dict["relic_surprise"]:
         surprise_patches(patch)
 
-    if options_dict["shop_prices"]:
+    if options_dict["random_shop_prices"]:
         shop_price_min = 50
         shop_price_max = 150
 
-    randomize_shop(shop_price_min, shop_price_max, options_dict["random_shop"], world, patch)
+    randomize_shop(shop_price_min, shop_price_max, shop_stock_mode(world.options), world, patch)
 
-    if options_dict["starting_zone"] != 0:
-        start_room_rando(options_dict["starting_zone"], world, patch)
+    if options_dict["starting_area"] != 0:
+        start_room_rando(options_dict["starting_area"], world, patch)
 
-    if options_dict["reverse_library"]:
+    if options_dict["inverted_library_card"]:
         rlib_card(patch)
 
     if options_dict["random_music"]:
         randomize_music(world, patch)
 
     # Thanks DerDrach to point me where to find those on SOTN.IO
-    if options_dict["color_randomizer"]:
+    if options_dict["random_colors"]:
         randomize_cape_colors(world, patch)
         randomize_grav_boot_colors(world, patch)
         randomize_hydro_storm_color(world, patch)
@@ -1374,14 +1375,15 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
         randomize_dracula_cape(world, patch)
         randomize_maria_color(world, patch)
 
-    if options_dict["skip_nz1"]:
+    if options_dict["skip_clock_tower_puzzle"]:
         single_hit_gears(patch)
 
-    if options_dict["randomize_drop"]:
-        randomize_drop(options_dict["randomize_drop"], world, patch)
+    drops = enemy_drops_mode(world.options)
+    if drops:
+        randomize_drop(drops, world, patch)
 
-    if options_dict["randomize_candles"]:
-        randomize_candles(options_dict["randomize_candles"], world, patch)
+    if options_dict["candle_drops"]:
+        randomize_candles(options_dict["candle_drops"], world, patch)
 
     apply_acessibility_patches(patch)
     rando_func_master(0, patch)
@@ -3275,7 +3277,7 @@ def randomize_drop(option: int, world: "SotnWorld", patch: SotnPatchData):
 
 def randomize_candles(option: int, world: "SotnWorld", patch: SotnPatchData):
     """Candle drops (not the Stopwatch candles). 1: shuffled among themselves; 2: each replaced by
-    an item of its own type; 3: anything but progression items; 4: anything."""
+    an item of its own type, not a progression item; 3: anything but progression items; 4: anything."""
     # Every candle in order: (vanilla item, tile).
     candles = [(item, tile)
                for item in tile_filter(io_items, ["candle"]) if item["name"] != "Stopwatch"
@@ -3285,7 +3287,8 @@ def randomize_candles(option: int, world: "SotnWorld", patch: SotnPatchData):
         new_names = [item["name"] for item, _ in candles]
         world.random.shuffle(new_names)
     elif option == 2:
-        new_names = [world.random.choice(type_filter(io_items, [item["type"]]))["name"] for item, _ in candles]
+        new_names = [world.random.choice([i for i in type_filter(io_items, [item["type"]])
+                                          if i["name"] not in PROGRESSION_DROP_NAMES])["name"] for item, _ in candles]
     else:
         all_type = type_filter(io_items, ["HEART", "GOLD", "SUBWEAPON", "POWERUP", "WEAPON1", "WEAPON2", "SHIELD",
                                           "HELMET", "ARMOR", "CLOAK", "ACCESSORY", "USABLE"])

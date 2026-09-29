@@ -4,8 +4,9 @@ Castlevania: Symphony of the Night played on [SymphonyRecomp](https://github.com
 the native PC version of the PlayStation game, with the Archipelago mod. You play from your own unmodified US disc
 image: nothing is patched, the mod applies the seed as the game runs.
 
-This world is based on fdelduque's Symphony of the Night world (for BizHawk) and has the same options, items and
-locations. It has its own game name, so both can be installed side by side; a BizHawk player uses fdelduque's world.
+This world is based on fdelduque's Symphony of the Night world (for BizHawk) and has the same items and locations. Its
+options do the same things, under clearer names. It has its own game name, so both can be installed side by side; a
+BizHawk player uses fdelduque's world.
 
 ## Where is the options page?
 

@@ -70,7 +70,7 @@ def forbid_missable_progression(world: MultiWorld, player: int) -> None:
 
 
 def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
-    boss_locations = options.boss_locations.value
+    boss_locations = options.boss_drops.value
     extension = options.item_pool.value
 
     # Forbid relics on boss drop
@@ -113,12 +113,12 @@ def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> 
 
 
 def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
-    open_are = options.open_are.value
-    open_no4 = options.open_no4.value
+    open_are = options.colosseum_back_door.value
+    open_no4 = options.caverns_back_door.value
     extension = options.item_pool.value
-    boss_locations = options.boss_locations.value
+    boss_locations = options.boss_drops.value
     enemysanity = options.enemysanity.value
-    fs_enemysanity = options.enemy_scroll.value
+    fs_enemysanity = options.enemysanity_needs_faerie_scroll.value
 
     location = world.get_location("Reverse Center Cube - Kill Dracula", player)
     set_rule(location, lambda state: sotn_has_dracula(state, player))

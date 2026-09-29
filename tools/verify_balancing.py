@@ -23,11 +23,11 @@ def main():
     os.makedirs(output)
     # One slot with few locations, so it's behind and balancing has something to do.
     with open(os.path.join(players, "a.yaml"), "w") as f:
-        f.write(f"name: Alucard\ngame: {GAME}\n{GAME}:\n  item_pool: relic_prog\n  progression_balancing: 99\n")
+        f.write(f"name: Alucard\ngame: {GAME}\n{GAME}:\n  item_pool: key_items\n  progression_balancing: 99\n")
     for i in range(3):
         with open(os.path.join(players, f"b{i}.yaml"), "w") as f:
-            f.write(f"name: Other{i}\ngame: {GAME}\n{GAME}:\n  progression_balancing: 99\n  boss_locations: true\n"
-                    f"  powerful_items: true\n  randomize_items: true\n")
+            f.write(f"name: Other{i}\ngame: {GAME}\n{GAME}:\n  progression_balancing: 99\n  boss_drops: true\n"
+                    f"  powerful_items: true\n  randomize_other_items: true\n")
 
     os.chdir(AP)
     sys.path.insert(0, AP)

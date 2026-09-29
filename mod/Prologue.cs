@@ -6,14 +6,14 @@ using Sotn;
 namespace SotnArchipelago;
 
 // Start new games at Castle Entrance instead of the Richter prologue when the seed's
-// remove_prologue option is on. Same approach as the recomp's own Skip Prologue
+// skip_prologue option is on. Same approach as the recomp's own Skip Prologue
 // (RandoPatch.SkipPrologue), which only runs with its built-in randomizer.
 static class Prologue
 {
     const int PrologueStage = 0x1F;
     const int EntranceFirstVisit = 0x41;
 
-    static bool ShouldSkip => ApClient.OptionInt("remove_prologue") > 0;
+    static bool ShouldSkip => ApClient.OptionInt("skip_prologue") > 0;
 
     // Runs when a new game is set up on the file select screen, before the first stage loads.
     [PostHook("sel", "func_801ACEC0")]

@@ -16,7 +16,7 @@ static class OptionHooks
 
     static bool FromStage(CpuContext c) => c.RA >= 0x80180000 && c.RA < 0x80200000;
 
-    // ---- enemy_stats: stats box on every hit ----
+    // ---- random_enemy_stats: stats box on every hit ----
     // Rom.py turns the Faerie scroll check in each stage's HitDetection into 'li v0,3' (owned and on).
     // Per-stage hooks in OptionData.g.cs report the scroll as owned for the length of the call.
     const uint FaerieScrollRelic = 0x80097973;
@@ -108,7 +108,7 @@ static class OptionHooks
         if (m.ReadU32(WingSmashTimer) == 1) m.WriteU32(WingSmashTimer, 2);
     }
 
-    // ---- color_randomizer: wing smash trail palette ----
+    // ---- random_colors: wing smash trail palette ----
     // One of Rom.py's two wing-smash variants changes the palette immediate at 0x8011E438 (vanilla 0x8102).
     const uint WingSmashPalette = 0x8011E438;
     const ushort VanillaTrailPalette = 0x8102;
@@ -126,7 +126,7 @@ static class OptionHooks
             m.WriteU16(_trail + 0x16, seeded);
     }
 
-    // ---- color_randomizer: gravity boots beam ----
+    // ---- random_colors: gravity boots beam ----
     // Rom.py changes the two colour immediates (0x8011E1AC, 0x8011E1B0) and which register each of the
     // 12 colour 'sb' instructions (0x8011E1C0..) stores. After the beam sets up its sprite pieces (step
     // 0), apply the patched instructions to them.
@@ -172,7 +172,7 @@ static class OptionHooks
         }
     }
 
-    // ---- color_randomizer: Joseph's cloak ----
+    // ---- random_colors: Joseph's cloak ----
     // Rom.py hooks HandlePlay (0x800E4BA4 -> jal 0x80136C00) with a routine storing six colours into the
     // custom cloak settings. Do what the routine does: its 'li v1,colour' immediates are at 0x80136C08+16i.
     const uint CloakHook = 0x800E4BA4, CloakHookJal = 0x0C04DB00;
@@ -186,7 +186,7 @@ static class OptionHooks
             m.WriteU8(CloakSettings + i * 4, m.ReadU8(CloakRoutineColours + i * 16));
     }
 
-    // ---- color_randomizer: Hydro Storm (Richter) ----
+    // ---- random_colors: Hydro Storm (Richter) ----
     // Five colour immediates in RicEntityCrashHydroStorm; the seed's values come from the payload's RIC
     // data. Applied to the sprite pieces once the crash has set them up (step 0).
     static readonly (uint FileOffset, uint[] PrimBytes)[] HydroColours =
@@ -217,7 +217,7 @@ static class OptionHooks
         });
     }
 
-    // ---- skip_nz1: one gear turn opens the Clock Tower door ----
+    // ---- skip_clock_tower_puzzle: one gear turn opens the Clock Tower door ----
     // Rom.py makes a gear finishing its turn write 0x000F (all four solved) to the puzzle mask.
     static uint _gear;
     static ushort _gearCount;
@@ -247,7 +247,7 @@ static class OptionHooks
         if (_gearCount == 1 && m.ReadU16(_gear + 0x80) == 0) m.WriteU16(puzzleMask, 0x000F);
     }
 
-    // ---- starting_zone (reverse castle): no Richter cutscene in the Castle Keep ----
+    // ---- starting_area (inverted castle): no Richter cutscene in the Castle Keep ----
     // Rom.py makes TOP_EntityCutscene read castle flag 0x96 as set ('li v0,1' at 0x801AC1E8).
     const uint RichterCutsceneSite = 0x801AC1E8, LiV0Is1 = 0x34020001;
     const uint RichterCutsceneFlag = Progress.CastleFlagsAddr + 0x96;

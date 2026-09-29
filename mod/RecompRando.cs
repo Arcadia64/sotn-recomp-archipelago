@@ -14,7 +14,7 @@ static class RecompRando
     // item tables, the shop and relics on every stage load, over the seed. While a seed applies it stays off.
     const uint PresetAddr = 0x8000C000;
 
-    // A start in the inverted castle (starting_zone): Rom.py adds a routine at 0x800DB9B8 that makes Leap stone
+    // A start in the inverted castle (starting_area): Rom.py adds a routine at 0x800DB9B8 that makes Leap stone
     // and Gravity boots count as owned there until the first castle is visited. The recomp does the same in
     // RandoPatch.OverrideIsRelicActive, but only while its byte 0x8000C003 is set, which happens once, when the
     // Entrance trapdoor sends you there, and is never saved: after a restart the relics would be gone. Keep it

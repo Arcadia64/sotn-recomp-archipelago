@@ -82,7 +82,7 @@ class SotnWorld(World):
         data = items[name]
         classification = data["classification"]
         # Upstream changed the shared item table, making Faerie scroll progression for every SotN slot.
-        if name == "Faerie scroll" and self.options.enemysanity.value and self.options.enemy_scroll.value:
+        if name == "Faerie scroll" and self.options.enemysanity.value and self.options.enemysanity_needs_faerie_scroll.value:
             classification = ItemClassification.progression
         return SotnItem(name, classification, data["id"], self.player)
 
@@ -136,7 +136,7 @@ class SotnWorld(World):
             # TODO: Add an option to customize extra locations
             extra_vessels = 0
             extra_equips = 0
-            if self.options.difficult.value == 0:
+            if self.options.difficulty.value == 0:
                 extra_vessels = 50
                 extra_equips = 50
                 itempool += [self.create_item("Spike breaker")]
@@ -148,7 +148,7 @@ class SotnWorld(World):
                 for r in relic_table.keys():
                     itempool += [self.create_item(r)]
                     added_items += 1
-            elif self.options.difficult.value == 1:
+            elif self.options.difficulty.value == 1:
                 extra_equips = 35
                 extra_vessels = 35
                 itempool += [self.create_item("Spike breaker")]
@@ -156,7 +156,7 @@ class SotnWorld(World):
                 itempool += [self.create_item("Gold ring")]
                 itempool += [self.create_item("Silver ring")]
                 added_items += 4
-            elif self.options.difficult.value == 2:
+            elif self.options.difficulty.value == 2:
                 extra_equips = 15
                 extra_vessels = 15
 
@@ -212,6 +212,10 @@ class SotnWorld(World):
         option_names: List[str] = [option_name for option_name in self.options_dataclass.type_hints
                                    if option_name != "plando_items"]
         slot_data = self.options.as_dict(*option_names)
+        # The names PopTracker's SotN pack reads (the upstream world's).
+        slot_data["open_no4"] = self.options.caverns_back_door.value
+        slot_data["open_are"] = self.options.colosseum_back_door.value
+        slot_data["boss_locations"] = self.options.boss_drops.value
         # The patch's writes for the SymphonyRecomp mod, which applies them to RAM as files load.
         slot_data["recomp"] = recomp_payload(self.sotn_patch)
         # The logic as data, for the mod's map (Logic.py).

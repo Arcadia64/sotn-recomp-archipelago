@@ -18,10 +18,10 @@ GAME = "Symphony of the Night (Recomp)"
 
 OPTION_SETS = [
     {},
-    {"open_no4": 2, "open_are": 1},
-    {"open_no4": 1, "item_pool": 3, "boss_locations": 1},
-    {"enemysanity": 1, "enemy_scroll": 1, "boss_locations": 1, "item_pool": 3},
-    {"difficult": 0, "unlocked_mode": 1},
+    {"caverns_back_door": 2, "colosseum_back_door": 1},
+    {"caverns_back_door": 1, "item_pool": 3, "boss_drops": 1},
+    {"enemysanity": 1, "enemysanity_needs_faerie_scroll": 1, "boss_drops": 1, "item_pool": 3},
+    {"difficulty": 0, "open_shortcuts": 1},
     {"no_logic": 1},
 ]
 

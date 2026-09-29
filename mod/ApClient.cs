@@ -744,9 +744,21 @@ public static class ApClient
     // ---- helpers ----
 
     // Option values in slot_data are numbers; read them without throwing on odd types.
+    // Option names of seeds generated before they were renamed (AP world 0.2.x).
+    static readonly Dictionary<string, string> OldOptionNames = new()
+    {
+        ["caverns_back_door"] = "open_no4",
+        ["colosseum_back_door"] = "open_are",
+        ["enemysanity_needs_faerie_scroll"] = "enemy_scroll",
+        ["open_shortcuts"] = "unlocked_mode",
+        ["heal_at_save_rooms"] = "auto_heal",
+        ["skip_prologue"] = "remove_prologue",
+    };
+
     public static int OptionInt(string name, int fallback = 0)
     {
-        var node = SlotData?[name];
+        var data = SlotData;
+        var node = data?[name] ?? (OldOptionNames.TryGetValue(name, out var old) ? data?[old] : null);
         if (node is JsonValue v)
         {
             if (v.TryGetValue<int>(out var i)) return i;

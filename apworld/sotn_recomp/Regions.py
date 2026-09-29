@@ -7,10 +7,10 @@ from .data.Constants import EXTENSIONS
 
 
 def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOptions) -> None:
-    open_no4 = options.open_no4.value
-    open_are = options.open_are.value
+    open_no4 = options.caverns_back_door.value
+    open_are = options.colosseum_back_door.value
     extension = options.item_pool.value
-    boss_locations = options.boss_locations.value
+    boss_locations = options.boss_drops.value
     enemysanity = options.enemysanity.value
 
     regions_dict = {
@@ -266,10 +266,10 @@ def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOp
 
 
 def create_regions(multiworld: MultiWorld, player: int, options: SOTNOptions) -> None:
-    open_no4 = options.open_no4.value
-    open_are = options.open_are.value
+    open_no4 = options.caverns_back_door.value
+    open_are = options.colosseum_back_door.value
     extension = options.item_pool.value
-    boss_locations = options.boss_locations.value
+    boss_locations = options.boss_drops.value
     enemysanity = options.enemysanity.value
 
     regions_dict = {

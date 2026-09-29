@@ -9,7 +9,7 @@ namespace SotnArchipelago;
 
 // With extended widescreen on, the recomp runs its own copy of HitDetection (WidescreenPatch), and that copy
 // has the prize table (what an enemy drops when it drops neither of its items: hearts, gold, ...) built in,
-// as in the vanilla game. randomize_drop's "global" options change each stage's table instead, so without
+// as in the vanilla game. enemy_drops_include_hearts_and_gold changes each stage's table instead, so without
 // this those drops would stay vanilla in extended widescreen. Keep the built-in copy equal to the current
 // stage's table (addresses: OptionData.PrizeTables, found by the generator).
 static class PrizeTableSync

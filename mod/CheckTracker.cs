@@ -151,7 +151,7 @@ static class CheckTracker
                 return m.ReadU32(loc.Addresses[0]) != 0;
             case Detect.Enemy:
                 if (ApClient.OptionInt("enemysanity") == 0) return false;
-                if (ApClient.OptionInt("enemy_scroll") != 0 && (m.ReadU8(RelicBase + FaerieScrollRelic) & 1) == 0) return false;
+                if (ApClient.OptionInt("enemysanity_needs_faerie_scroll") != 0 && (m.ReadU8(RelicBase + FaerieScrollRelic) & 1) == 0) return false;
                 return (m.ReadU8(loc.Addresses[0]) & (1 << loc.Bit)) != 0;
             default:
                 return false;

@@ -22,9 +22,10 @@ Work in progress. See [PLAN.md](PLAN.md) for what's done and what's next.
 
 Whoever generates the multiworld installs `sotn_recomp.apworld` in Archipelago (Archipelago Launcher -> Install
 APWorld). Its game is **Symphony of the Night (Recomp)**: player files say `game: Symphony of the Night (Recomp)`
-(generate a template from the launcher). Options are the same as fdelduque's Symphony of the Night world (for
-BizHawk), which this world is based on. The two are separate games and can be installed side by side; this mod
-only plays seeds from this world. There is no patch file: the mod gets everything from the server.
+(generate a template from the launcher). It's based on fdelduque's Symphony of the Night world (for BizHawk), with
+the same items and locations; the options do the same things, with clearer names and descriptions (the template
+explains each one). The two are separate games and can be installed side by side; this mod only plays seeds from
+this world. There is no patch file: the mod gets everything from the server.
 
 The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works with this world as it is.
 
