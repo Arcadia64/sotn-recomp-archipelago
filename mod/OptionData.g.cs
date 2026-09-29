@@ -7,7 +7,9 @@ using RecompOne.Runtime.Modding;
 
 namespace SotnArchipelago;
 
-public readonly record struct MusicSite(int Stage, uint Addr, byte Vanilla);
+// RecompReads: the recomp's own rewrite of the function reads this site back (it plays the seed's song
+// already); the mod leaves those alone, or it would remap them a second time.
+public readonly record struct MusicSite(int Stage, uint Addr, byte Vanilla, bool RecompReads);
 
 static class OptionData
 {
@@ -71,57 +73,57 @@ static class OptionData
     // song they request on the disc
     public static readonly MusicSite[] MusicSites =
     [
-        new(0x02, 0x801BB700, 0x1D), // LIB_BOSS
-        new(0x02, 0x801BB7BC, 0x09), // LIB
-        new(0x02, 0x801BB828, 0x09), // LIB
-        new(0x0C, 0x801B4280, 0x1D), // NZ0_BOSS
-        new(0x0C, 0x801B4350, 0x2E), // NZ0
-        new(0x0C, 0x801B43CC, 0x2E), // NZ0
-        new(0x0D, 0x801AA658, 0x1D), // NZ1_BOSS
-        new(0x0D, 0x801AA718, 0x11), // NZ1
-        new(0x0D, 0x801AA790, 0x11), // NZ1
-        new(0x12, 0x801925BC, 0x30), // DRE
-        new(0x16, 0x80196160, 0x19), // CHI
-        new(0x19, 0x801A4500, 0x34), // BO5
-        new(0x1B, 0x801A64B0, 0x0B), // NO4
-        new(0x1B, 0x801A64F4, 0x0B), // NO4
-        new(0x1B, 0x801A65FC, 0x1D), // BO3
-        new(0x1B, 0x801A6690, 0x0B), // NO4
-        new(0x1C, 0x801A4588, 0x23), // ARE
-        new(0x1C, 0x801A6EA8, 0x1D), // BO2
-        new(0x1D, 0x801A1AB8, 0x34), // BO1
-        new(0x1D, 0x801A1AEC, 0x34), // BO1
-        new(0x1D, 0x801A24E4, 0x07), // CAT
-        new(0x1E, 0x801AD47C, 0x34), // BO0
-        new(0x1E, 0x801AD4D8, 0x34), // BO0
-        new(0x1E, 0x801AD4F8, 0x34), // BO0
-        new(0x1E, 0x801AD56C, 0x34), // BO0
-        new(0x1E, 0x801B8714, 0x17), // NO2
-        new(0x28, 0x8019AD4C, 0x34), // RCEN_BOSS
-        new(0x2D, 0x801ACA08, 0x1D), // RNZ1_BOSS
-        new(0x2D, 0x801ACAAC, 0x38), // RNZ1
-        new(0x2D, 0x801ACB24, 0x38), // RNZ1
-        new(0x36, 0x80199648, 0x34), // RBO8
-        new(0x36, 0x801996A8, 0x03), // RCAT
-        new(0x36, 0x80199744, 0x03), // RCAT
-        new(0x37, 0x80193F30, 0x1D), // RBO7
-        new(0x39, 0x801B52A8, 0x1D), // RBO5
-        new(0x3A, 0x80198894, 0x1D), // RBO4
-        new(0x3A, 0x801988F4, 0x38), // RNO1
-        new(0x3A, 0x80198990, 0x38), // RNO1
-        new(0x3B, 0x80192BE0, 0x30), // RBO3
-        new(0x3B, 0x80192C40, 0x01), // RDAI
-        new(0x3B, 0x80192CDC, 0x01), // RDAI
-        new(0x3C, 0x8019F5FC, 0x34), // RBO2
-        new(0x3C, 0x8019F748, 0x19), // RCHI
-        new(0x3D, 0x80194E20, 0x34), // RBO1
-        new(0x3D, 0x80194E40, 0x34), // RBO1
-        new(0x3D, 0x80194E98, 0x38), // RNZ0
-        new(0x3D, 0x80194F28, 0x38), // RNZ0
-        new(0x3E, 0x801945CC, 0x15), // RARE
-        new(0x3E, 0x80194674, 0x15), // RARE
-        new(0x41, 0x801B81C8, 0x0F), // NO3
-        new(0x41, 0x801C027C, 0x0F), // NO3
+        new(0x02, 0x801BB700, 0x1D, false), // LIB_BOSS
+        new(0x02, 0x801BB7BC, 0x09, false), // LIB
+        new(0x02, 0x801BB828, 0x09, false), // LIB
+        new(0x0C, 0x801B4280, 0x1D, false), // NZ0_BOSS
+        new(0x0C, 0x801B4350, 0x2E, false), // NZ0
+        new(0x0C, 0x801B43CC, 0x2E, false), // NZ0
+        new(0x0D, 0x801AA658, 0x1D, false), // NZ1_BOSS
+        new(0x0D, 0x801AA718, 0x11, false), // NZ1
+        new(0x0D, 0x801AA790, 0x11, false), // NZ1
+        new(0x12, 0x801925BC, 0x30, false), // DRE
+        new(0x16, 0x80196160, 0x19, false), // CHI
+        new(0x19, 0x801A4500, 0x34, false), // BO5
+        new(0x1B, 0x801A64B0, 0x0B, false), // NO4
+        new(0x1B, 0x801A64F4, 0x0B, false), // NO4
+        new(0x1B, 0x801A65FC, 0x1D, false), // BO3
+        new(0x1B, 0x801A6690, 0x0B, false), // NO4
+        new(0x1C, 0x801A4588, 0x23, false), // ARE
+        new(0x1C, 0x801A6EA8, 0x1D, false), // BO2
+        new(0x1D, 0x801A1AB8, 0x34, false), // BO1
+        new(0x1D, 0x801A1AEC, 0x34, false), // BO1
+        new(0x1D, 0x801A24E4, 0x07, false), // CAT
+        new(0x1E, 0x801AD47C, 0x34, false), // BO0
+        new(0x1E, 0x801AD4D8, 0x34, false), // BO0
+        new(0x1E, 0x801AD4F8, 0x34, false), // BO0
+        new(0x1E, 0x801AD56C, 0x34, false), // BO0
+        new(0x1E, 0x801B8714, 0x17, false), // NO2
+        new(0x28, 0x8019AD4C, 0x34, false), // RCEN_BOSS
+        new(0x2D, 0x801ACA08, 0x1D, true), // RNZ1_BOSS
+        new(0x2D, 0x801ACAAC, 0x38, true), // RNZ1
+        new(0x2D, 0x801ACB24, 0x38, true), // RNZ1
+        new(0x36, 0x80199648, 0x34, false), // RBO8
+        new(0x36, 0x801996A8, 0x03, false), // RCAT
+        new(0x36, 0x80199744, 0x03, false), // RCAT
+        new(0x37, 0x80193F30, 0x1D, false), // RBO7
+        new(0x39, 0x801B52A8, 0x1D, false), // RBO5
+        new(0x3A, 0x80198894, 0x1D, false), // RBO4
+        new(0x3A, 0x801988F4, 0x38, false), // RNO1
+        new(0x3A, 0x80198990, 0x38, false), // RNO1
+        new(0x3B, 0x80192BE0, 0x30, false), // RBO3
+        new(0x3B, 0x80192C40, 0x01, false), // RDAI
+        new(0x3B, 0x80192CDC, 0x01, false), // RDAI
+        new(0x3C, 0x8019F5FC, 0x34, false), // RBO2
+        new(0x3C, 0x8019F748, 0x19, false), // RCHI
+        new(0x3D, 0x80194E20, 0x34, false), // RBO1
+        new(0x3D, 0x80194E40, 0x34, false), // RBO1
+        new(0x3D, 0x80194E98, 0x38, false), // RNZ0
+        new(0x3D, 0x80194F28, 0x38, false), // RNZ0
+        new(0x3E, 0x801945CC, 0x15, true), // RARE
+        new(0x3E, 0x80194674, 0x15, true), // RARE
+        new(0x41, 0x801B81C8, 0x0F, false), // NO3
+        new(0x41, 0x801C027C, 0x0F, false), // NO3
     ];
 
     // Each stage's prize table (32 u16: what an enemy drops when not one of its items), for the extended
@@ -324,8 +326,6 @@ static class OptionHookSites
     [PostHook("nz0", "EntityBossFightManager")] static void Music_nz0_EntityBossFightManagerOut(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
     [PreHook("nz1", "EntityBossDoorTrigger")] static void Music_nz1_EntityBossDoorTriggerIn(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
     [PostHook("nz1", "EntityBossDoorTrigger")] static void Music_nz1_EntityBossDoorTriggerOut(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
-    [PreHook("rbo0", "RBO0_EntityBoss")] static void Music_rbo0_RBO0_EntityBossIn(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
-    [PostHook("rbo0", "RBO0_EntityBoss")] static void Music_rbo0_RBO0_EntityBossOut(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
     [PreHook("rbo1", "func_80194C50")] static void Music_rbo1_func_80194C50In(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
     [PostHook("rbo1", "func_80194C50")] static void Music_rbo1_func_80194C50Out(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
     [PreHook("rbo2", "func_8019F4AC")] static void Music_rbo2_func_8019F4ACIn(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
@@ -342,6 +342,4 @@ static class OptionHookSites
     [PostHook("rbo8", "func_8019953C")] static void Music_rbo8_func_8019953COut(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
     [PreHook("rcen", "func_8019AAFC")] static void Music_rcen_func_8019AAFCIn(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
     [PostHook("rcen", "func_8019AAFC")] static void Music_rcen_func_8019AAFCOut(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
-    [PreHook("rnz1", "func_801AC7CC")] static void Music_rnz1_func_801AC7CCIn(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
-    [PostHook("rnz1", "func_801AC7CC")] static void Music_rnz1_func_801AC7CCOut(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
 }

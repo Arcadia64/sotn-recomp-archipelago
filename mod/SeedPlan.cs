@@ -264,6 +264,7 @@ static class SeedPlan
     static void OnStageLoad(CpuContext c, IMemory m)
     {
         if (c.RA == HandlePlayCallReturn || !Ready) return;
+        RecompRando.Guard(m); // before the recomp's own randomizer, which runs after this in the same function
         ApplyDra(m);
         ApplyCurrentStage("stage load", m);
     }
@@ -315,6 +316,16 @@ static class SeedPlan
     }
 
     const uint GuaranteedDropSite = 0x800FF4C0, GuaranteedDropWord1 = 0x3C068009, GuaranteedDropWord2 = 0x34C67BF4;
+
+    // With that patch, the recomp's func_800FF494 alternates the rare (0x40) and uncommon (0x20) drop on the
+    // kill count's parity the other way round from the patch (odd: rare). Match the patch.
+    [PostHook("dra", "func_800FF494")]
+    static void GuaranteedDropOrder(CpuContext c, IMemory m)
+    {
+        if (!ActiveFor(m) || m.ReadU32(GuaranteedDropSite) != GuaranteedDropWord1 || m.ReadU32(GuaranteedDropSite + 4) != GuaranteedDropWord2) return;
+        if (c.V0 == 0x20) c.V0 = 0x40;
+        else if (c.V0 == 0x40) c.V0 = 0x20;
+    }
     const uint AlwaysDropSwitch = 0x800FF460, AlwaysDropValue = 0x34020100;
 
     // Files loaded outside stage loads (SEL: title, file select, ending) are written each frame while

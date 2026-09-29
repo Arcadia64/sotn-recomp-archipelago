@@ -14,6 +14,7 @@ and boss overlays all load at 0x80180000, so a disc offset inside a zone's file 
 the game and the recomp use g_StageId. STAGE_IDS maps one to the other and is checked
 against the recomp's item-table addresses (Randomizer.cs StageItemListOffset).
 """
+import glob
 import importlib
 import math
 import os
@@ -447,6 +448,16 @@ def prize_tables(zones_mod):
     return tables
 
 
+def recomp_patch_reads():
+    """RAM addresses the recomp's hand-written patches (ref/SymphonyRecomp/patches) mention: where its
+    rewrites read the patched bytes back, as `m.ReadU8(0x801ACA08)`."""
+    found = set()
+    for path in glob.glob(os.path.join(ROOT, "ref", "SymphonyRecomp", "patches", "**", "*.cs"), recursive=True):
+        for m in re.finditer(r"0x(8[0-9A-Fa-f]{7})", open(path, encoding="utf-8", errors="ignore").read()):
+            found.add(int(m.group(1), 16))
+    return found
+
+
 def write_options(constants, disc, world_dir, despawn_stages, prize_table_addrs):
     code = RecompCode()
     lines = [
@@ -459,7 +470,9 @@ def write_options(constants, disc, world_dir, despawn_stages, prize_table_addrs)
         "",
         "namespace SotnArchipelago;",
         "",
-        "public readonly record struct MusicSite(int Stage, uint Addr, byte Vanilla);",
+        "// RecompReads: the recomp's own rewrite of the function reads this site back (it plays the seed's song",
+        "// already); the mod leaves those alone, or it would remap them a second time.",
+        "public readonly record struct MusicSite(int Stage, uint Addr, byte Vanilla, bool RecompReads);",
         "",
         "static class OptionData",
         "{",
@@ -484,8 +497,10 @@ def write_options(constants, disc, world_dir, despawn_stages, prize_table_addrs)
                 continue  # DRA stage music table: data, applied as it is
             stage, ram = disc.to_ram(off)
             music.append((stage, ram, disc_byte(off), area))
+    read_by_recomp = recomp_patch_reads()
     for stage, ram, vanilla, area in sorted(music):
-        lines.append(f"        new(0x{stage:02X}, 0x{ram:08X}, 0x{vanilla:02X}), // {area}")
+        reads = ram in read_by_recomp
+        lines.append(f"        new(0x{stage:02X}, 0x{ram:08X}, 0x{vanilla:02X}, {'true' if reads else 'false'}), // {area}")
     lines += ["    ];", "",
               "    // Each stage's prize table (32 u16: what an enemy drops when not one of its items), for the extended",
               "    // widescreen copy of HitDetection, which has the vanilla table built in (OptionHooks.SyncPrizeTable)",
@@ -521,6 +536,8 @@ def write_options(constants, disc, world_dir, despawn_stages, prize_table_addrs)
                      f'DespawnDrops.Keep(c, m);')
 
     for stage, ram, _, area in music:
+        if ram in read_by_recomp:
+            continue  # the recomp's rewrite plays the seed's song itself
         overlay = disc.key_of(stage).lower()
         fn, by_hand = code.function_at(overlay, ram)
         if fn is None:

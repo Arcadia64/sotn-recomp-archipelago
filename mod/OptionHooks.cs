@@ -59,6 +59,7 @@ static class OptionHooks
             _musicByStage = [];
             foreach (var site in OptionData.MusicSites)
             {
+                if (site.RecompReads) continue; // the recomp's rewrite plays the seed's song itself
                 if (!_musicByStage.TryGetValue(site.Stage, out var list)) _musicByStage[site.Stage] = list = [];
                 list.Add(site);
             }

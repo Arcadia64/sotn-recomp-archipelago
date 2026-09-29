@@ -16,11 +16,17 @@ static class PrizeTableSync
 {
     const int Entries = 32;
     static ushort[]? _table;
+    static ushort[]? _vanilla;
     static bool _looked;
 
     public static void Tick(IMemory m)
     {
-        if (!SeedPlan.Ready) return;
+        if (!SeedPlan.ActiveFor(m))
+        {
+            // No seed (or another seed's save): the built-in copy goes back to what it was.
+            if (_vanilla != null && Table() is { } built && !built.AsSpan().SequenceEqual(_vanilla)) _vanilla.CopyTo(built, 0);
+            return;
+        }
         if (m.ReadU8(Game.GameStateAddr) != (byte)GameState.Play || m.ReadU8(ItemGiver.EngineStepAddr) != ItemGiver.EngineNormal) return;
         if (!OptionData.PrizeTables.TryGetValue(m.ReadU8(Game.StageIdAddr), out uint at)) return;
         var table = Table();
@@ -40,6 +46,7 @@ static class PrizeTableSync
         var type = AppDomain.CurrentDomain.GetAssemblies()
             .Select(a => a.GetType("Recompiled.WidescreenPatch")).FirstOrDefault(t => t != null);
         _table = type?.GetField("TestCollPrizeTable", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as ushort[];
+        _vanilla = (ushort[]?)_table?.Clone();
         if (_table == null || _table.Length != Entries)
         {
             Log.Info("extended widescreen's prize table not found; randomized global drops apply only without it");

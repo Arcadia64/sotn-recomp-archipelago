@@ -30,7 +30,11 @@ static class ConnectGate
     static void SaveApplied(CpuContext c, IMemory m) => _saveLoaded = true;
 
     [PreHook("sel", "UpdateNameEntry")]
-    static void NewGame(CpuContext c, IMemory m) => _saveLoaded = false;
+    static void NewGame(CpuContext c, IMemory m)
+    {
+        _saveLoaded = false;
+        Prologue.NewGamePending = true;
+    }
 
     [PreHook("sel", "SEL_Update")]
     static bool HoldUntilSeed(CpuContext c, IMemory m)

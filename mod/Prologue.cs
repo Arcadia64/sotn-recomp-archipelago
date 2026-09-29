@@ -19,8 +19,12 @@ static class Prologue
     [PostHook("sel", "func_801ACEC0")]
     static void AfterNewGameSetup(CpuContext c, IMemory m)
     {
-        if (!ShouldSkip) return;
-        if (m.ReadU32(Game.StageIdAddr) != PrologueStage) return;
+        if (!ShouldSkip || !NewGamePending) return;
+        // The recomp's own skip (RandoPatch.SkipPrologue, inside this function) may already have set the
+        // stage from the seed's patched byte.
+        uint stage = m.ReadU32(Game.StageIdAddr);
+        if (stage != PrologueStage && stage != EntranceFirstVisit) return;
+        NewGamePending = false;
         m.WriteU16(Game.StageIdAddr, EntranceFirstVisit);
 
         // As Rom.py's no_prologue does: clear the time-attack records, which the prologue would have
@@ -31,4 +35,7 @@ static class Prologue
     }
 
     const uint TimeAttackRecords = 28;
+
+    // Set when the file select screen goes to name entry (a new game, not a loaded save: ConnectGate).
+    public static bool NewGamePending;
 }
