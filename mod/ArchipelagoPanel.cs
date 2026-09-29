@@ -10,6 +10,7 @@ public sealed class ArchipelagoPanel : IPanel
 {
     const string ServerKey = "Archipelago.Server";
     const string SlotKey = "Archipelago.Slot";
+    const string AutoConnectKey = "Archipelago.AutoConnect";
 
     string _server;
     string _slot;
@@ -21,6 +22,19 @@ public sealed class ArchipelagoPanel : IPanel
         var view = RecompOne.Runtime.Runtime.View;
         _server = view.GetString(ServerKey, "archipelago.gg:38281");
         _slot = view.GetString(SlotKey, "");
+        _autoConnect = view.GetBool(AutoConnectKey, true);
+    }
+
+    bool _autoConnect;
+
+    // When the game starts: connect to the last server and slot, if that's on (the password isn't kept, so a
+    // room with one needs Connect by hand).
+    public void ConnectOnStart()
+    {
+        if (!_autoConnect || ApClient.State != ConnectionState.Disconnected) return;
+        if (_server.Trim().Length == 0 || _slot.Trim().Length == 0) return;
+        Log.Info($"connecting to {_server} as {_slot} (automatic; turn it off in the Archipelago window)");
+        ApClient.Connect(_server, _slot, _password);
     }
 
     // The map window (ArchipelagoMod registers both), opened from here.
@@ -76,6 +90,12 @@ public sealed class ArchipelagoPanel : IPanel
         else if (ImGui.Button("Disconnect"))
         {
             ApClient.Disconnect();
+        }
+        ImGui.SameLine();
+        if (ImGui.Checkbox("Connect when the game starts", ref _autoConnect))
+        {
+            RecompOne.Runtime.Runtime.View.SetBool(AutoConnectKey, _autoConnect);
+            RecompOne.Runtime.Runtime.SaveView();
         }
 
         ImGui.SameLine();

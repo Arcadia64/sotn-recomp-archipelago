@@ -59,7 +59,7 @@ static class CheckTracker
                 _warnedOtherSeed = true;
                 _otherSeedWarnedAt = frame;
                 ApClient.ShowToast("Archipelago: different seed",
-                    "This save is from a different seed than the server's: the game is playing without Archipelago (nothing is placed, sent or received). Connect to this save's server, or disconnect to play it offline if you've played it on this PC.",
+                    "This save is from a different seed than the server's, and its seed isn't on this PC: nothing is placed, sent or received until you connect to this save's server.",
                     OtherSeedWarningSeconds);
             }
             return;

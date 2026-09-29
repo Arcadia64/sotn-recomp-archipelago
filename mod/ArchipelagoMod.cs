@@ -32,6 +32,7 @@ public sealed class ArchipelagoMod : IMod
         _panel.Map = _map;
         AddBarItem(MenuKey, TogglePanel);
         Event.AddListener<VSyncEvent>(OnVSync);
+        _panel.ConnectOnStart();
     }
 
     public void OnUnload()
@@ -86,7 +87,7 @@ public sealed class ArchipelagoMod : IMod
         Fixes.Tick(e.Memory);
         SeedPlan.ApplyResidentFiles(e.Memory);
         SeedCache.Tick(e.Frame);
-        SeedCache.UseForSave(e.Memory);
+        SeedCache.UseForSave(e.Memory, e.Frame);
         SeedPlan.SyncDra(e.Memory);
         PrizeTableSync.Tick(e.Memory);
 

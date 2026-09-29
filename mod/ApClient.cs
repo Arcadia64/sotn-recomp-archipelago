@@ -130,7 +130,7 @@ public static class ApClient
         {
             lock (_gate)
             {
-                if (_state != ConnectionState.Disconnected) return false;
+                if (_state == ConnectionState.Connected) return false; // while connecting: used until connected
                 _seedName = seed["seed"]!.GetValue<string>();
                 _slot = seed["slot"]!.GetValue<int>();
                 _team = seed["team"]!.GetValue<int>();
