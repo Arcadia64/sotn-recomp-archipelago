@@ -162,6 +162,7 @@ static class ApLook
     [PreHook("dra", "AddToInventory")]
     static bool OnAddToInventory(CpuContext c, IMemory m)
     {
+        if (!ItemGuard.Allow(c, m)) return false;
         if (!Active || !FromStage(c)) return true;
 
         // The Librarian's purchase loop: AddToInventory(list[S0].id, kind) once per unit bought. Until
@@ -359,6 +360,13 @@ static class ApLook
     }
 
     // Bottom corner text: one byte per glyph = ASCII - 0x20 (space = 0), ended by FF 00.
+    // Writes text into the pickup-name buffer and returns its address, for a name the game shows next.
+    public static uint CornerText(IMemory m, string text)
+    {
+        WriteCornerText(m, TextBuffer, text);
+        return TextBuffer;
+    }
+
     static void WriteCornerText(IMemory m, uint at, string text)
     {
         int n = System.Math.Min(text.Length, MaxTextGlyphs);

@@ -3193,173 +3193,110 @@ def surprise_patches(patch: SotnPatchData):
 # "Spike breaker" / "Silver ring" / "Gold ring" never matched, so those three could drop).
 PROGRESSION_DROP_NAMES = ["Spike Breaker", "Holy glasses", "Silver Ring", "Gold Ring"]
 
+# Item types a drop can hold as an item (tile_value adds tile_id_offset): everything but hearts, gold,
+# subweapons and vessels, which drop as "prizes".
+ITEM_DROP_TYPES = ("USABLE", "WEAPON1", "WEAPON2", "SHIELD", "HELMET", "ARMOR", "CLOAK", "ACCESSORY")
+
+# Drop slots the recomp always spawns as an item: the two scripted Bone Scimitars at the start of the
+# Castle Entrance (always Short sword, then Red Rust) read the Bone Scimitar's drops (DRA 0x800A9982 and
+# 0x800A9984) and make an item drop of the value minus 0x80 (RandoPatch.EntityBoneScimitar_no3). A heart,
+# gold or subweapon there becomes an item number the game doesn't have, which crashes it when picked up.
+ITEM_ONLY_DROP_ADDRESSES = {0xB6B3A, 0xB6B3C}
+
+# What the game can drop: a value under 0x80 is a prize (heart, gold, subweapon, vessel), anything else an
+# item, 0x80 + its index (169 hand items, then 90 body items).
+PRIZE_IDS = {item["id"] for item in io_items if item.get("type") in ("HEART", "GOLD", "SUBWEAPON", "POWERUP")}
+ITEM_COUNT = 169 + 90
+
+
+def check_drop(value: int, item_only: bool, what: str) -> None:
+    """Refuse to generate a drop the game can't handle (a bad item number crashes it on pickup)."""
+    valid = (value >= 0x80 and value - 0x80 < ITEM_COUNT) or (value < 0x80 and value in PRIZE_IDS and not item_only)
+    if not valid:
+        raise ValueError(f"{what}: drop value 0x{value:X} isn't something the game can drop"
+                         + (" (this slot must be an item)" if item_only else ""))
+
 
 def randomize_drop(option: int, world: "SotnWorld", patch: SotnPatchData):
-    items = tile_filter(io_items, ["enemy"])
-    dropped_items = []
-    rng_drop = []
-    global_drops = True
-    exclude_progression = True
-    if option in (1, 3, 5, 7, 9):
-        global_drops = False
-    if option in (5, 6, 9, 10):
-        exclude_progression = False
+    """Enemy drops. 1-2: shuffled among themselves; 3-6: each replaced by an item of its own type;
+    7-10: anything. Even options include the global (heart and gold) drops; 5, 6, 9 and 10 allow
+    progression items."""
+    global_drops = option not in (1, 3, 5, 7, 9)
+    exclude_progression = option not in (5, 6, 9, 10)
 
-    # Collect every drop
-    for item in items:
-        for tile in item["tiles"]:
-            if tile["enemy"] == "GLOBAL_DROP" and not global_drops:
-                continue
+    def allowed(name: str) -> bool:
+        return not exclude_progression or name not in PROGRESSION_DROP_NAMES
 
-            total = len(tile["addresses"])
-            for _ in range(total):
-                dropped_items.append(item["name"])
+    # Every drop slot in order, one address each: (vanilla item, tile, address).
+    slots = [(item, tile, address)
+             for item in tile_filter(io_items, ["enemy"])
+             for tile in item["tiles"] if global_drops or tile["enemy"] != "GLOBAL_DROP"
+             for address in tile["addresses"]]
 
-    if option == 1 or option == 2:
-        # Randomize the drops
-        rng_drop = dropped_items[:]
-        world.random.shuffle(rng_drop)
+    if option in (1, 2):
+        new_names = [item["name"] for item, _, _ in slots]
+        world.random.shuffle(new_names)
     elif 3 <= option <= 6:
-        # Randomize the drops
-        rng_drop = []
-        added_drops = {}
-        for drop in dropped_items:
-            item_type = []
-            old_drop = io_item_name[drop]
-            item_type.append(old_drop["type"])
-            type_drops = type_filter(io_items, item_type)
-            tries = 0
-            while tries < 5:
-                while True:
-                    rng_type_drop = world.random.choice(type_drops)
-                    if exclude_progression:
-                        if rng_type_drop["name"] not in PROGRESSION_DROP_NAMES:
-                            break
-                    else:
-                        break
-
-                # try to not duplicate items except for Heart and Powerups
-                if rng_type_drop["type"] in ["HEART", "POWERUP"]:
-                    rng_drop.append(rng_type_drop["name"])
+        # Same type, avoiding duplicates where it can (five tries), except for hearts and vessels.
+        new_names = []
+        used = set()
+        for item, _, _ in slots:
+            choices = [i for i in type_filter(io_items, [item["type"]]) if allowed(i["name"])]
+            pick = world.random.choice(choices)
+            for _ in range(4):
+                if pick["type"] in ("HEART", "POWERUP") or pick["name"] not in used:
                     break
+                pick = world.random.choice(choices)
+            used.add(pick["name"])
+            new_names.append(pick["name"])
+    else:
+        possible = [name for name in io_item_name if allowed(name)]
+        new_names = [world.random.choice(possible) for _ in slots]
 
-                if rng_type_drop["name"] in added_drops:
-                    if tries <= 4:
-                        tries += 1
-                        continue
-
-                    total_drops = added_drops[rng_type_drop["name"]]
-                    added_drops[rng_type_drop["name"]] = total_drops + 1
-                    break
-                else:
-                    added_drops[rng_type_drop["name"]] = 1
-                    break
-            rng_drop.append(rng_type_drop["name"])
-    elif 7 <= option <= 10:
-        possible_drops = list(io_item_name.keys())
-        for _ in range(len(dropped_items)):
-            while True:
-                new_drop = world.random.choice(possible_drops)
-                if exclude_progression:
-                    if new_drop not in PROGRESSION_DROP_NAMES:
-                        break
-                    continue
-                break
-            rng_drop.append(new_drop)
-
-    # Write on the ROM
-    for item in items:
-        for tile in item["tiles"]:
-            if tile["enemy"] == "GLOBAL_DROP" and not global_drops:
-                continue
-
-            for address in tile["addresses"]:
-                tile_options = {}
-                if "noOffset" in tile:
-                    tile_options = {"no_offset": True}
-                new_drop = io_item_name[rng_drop.pop()]
-                new_tile = tile_value(new_drop, tile_options)
-                patch.write_token(APTokenTypes.WRITE, address, new_tile.to_bytes(2, "little"))
+    for (item, tile, address), name in zip(slots, new_names):
+        new_drop = io_item_name[name]
+        if address in ITEM_ONLY_DROP_ADDRESSES and new_drop["type"] not in ITEM_DROP_TYPES:
+            new_drop = world.random.choice([i for i in type_filter(io_items, [item["type"]]) if allowed(i["name"])])
+            name = new_drop["name"]
+        new_tile = tile_value(new_drop, {"no_offset": True} if "noOffset" in tile else {})
+        if "noOffset" not in tile:
+            check_drop(new_tile, address in ITEM_ONLY_DROP_ADDRESSES, f"enemy drop at 0x{address:X} ({name})")
+        patch.write_token(APTokenTypes.WRITE, address, new_tile.to_bytes(2, "little"))
 
 
 def randomize_candles(option: int, world: "SotnWorld", patch: SotnPatchData):
-    items = tile_filter(io_items, ["candle"])
-    dropped_items = []
-    rng_drop = []
-    exclude_progression = True
-    if option in (5, 6, 9, 10):
-        exclude_progression = False
-
-    # Collect every drop excluding Stopwatch
-    for item in items:
-        if item["name"] == "Stopwatch":
-            continue
-        for tile in item["tiles"]:
-            if tile["zones"][0] == "ST0":
-                continue
-
-            if "candle" in tile:
-                dropped_items.append(item["name"])
+    """Candle drops (not the Stopwatch candles). 1: shuffled among themselves; 2: each replaced by
+    an item of its own type; 3: anything but progression items; 4: anything."""
+    # Every candle in order: (vanilla item, tile).
+    candles = [(item, tile)
+               for item in tile_filter(io_items, ["candle"]) if item["name"] != "Stopwatch"
+               for tile in item["tiles"] if "candle" in tile and tile["zones"][0] != "ST0"]
 
     if option == 1:
-        # Randomize the drops
-        rng_drop = dropped_items[:]
-        world.random.shuffle(rng_drop)
+        new_names = [item["name"] for item, _ in candles]
+        world.random.shuffle(new_names)
     elif option == 2:
-        for drop in dropped_items:
-            if drop in ["Heart", "Big heart"]:
-                rng_drop.append(world.random.choice(["Heart", "Big heart"]))
-            elif drop in ["$1", "$25", "$50", "$100", "$250", "$400", "$700", "$1000", "$2000", "$5000"]:
-                gold_type = type_filter(io_items, ["GOLD"])
-                gold_names = [item["name"] for item in gold_type]
-                rng_drop.append(world.random.choice(gold_names))
-            elif drop in ["Dagger", "Axe", "Cross", "Holy Water", "Bible", "Rebound Stone", "Vibhuti", "Agunea"]:
-                subweapon_type = type_filter(io_items, ["SUBWEAPON"])
-                subweapon_names = [item["name"] for item in subweapon_type]
-                rng_drop.append(world.random.choice(subweapon_names))
-            elif drop == "Uncurse":
-                usable_type = type_filter(io_items, ["USABLE"])
-                usable_names = [item["name"] for item in usable_type]
-                rng_drop.append(world.random.choice(usable_names))
-        rng_drop = rng_drop[::-1]
-    elif option == 3 or option == 4:
+        new_names = [world.random.choice(type_filter(io_items, [item["type"]]))["name"] for item, _ in candles]
+    else:
         all_type = type_filter(io_items, ["HEART", "GOLD", "SUBWEAPON", "POWERUP", "WEAPON1", "WEAPON2", "SHIELD",
                                           "HELMET", "ARMOR", "CLOAK", "ACCESSORY", "USABLE"])
         all_names = [item["name"] for item in all_type]
-
         if option == 3:
-            progression_items = ["Spike Breaker", "Holy glasses", "Gold Ring", "Silver Ring"]
-            for item in progression_items:
-                all_names.remove(item)
+            all_names = [name for name in all_names if name not in PROGRESSION_DROP_NAMES]
+        new_names = [world.random.choice(all_names) for _ in candles]
 
-        common_drops = ["Heart", "Big heart", "$1", "$25", "$50", "$100", "$250", "$400", "$700", "$1000", "$2000",
-                        "$5000"]
-        added_drops = []
-        for drop in dropped_items:
-            new_drop = world.random.choice(all_names)
-            rng_drop.append(world.random.choice(all_names))
-
-    # Write on the ROM
-    for item in items:
-        if item["name"] == "Stopwatch":
-            continue
-
-        for tile in item["tiles"]:
-            if "candle" not in tile or tile["zones"][0] == "ST0":
-                continue
-
-            new_drop = io_item_name[rng_drop.pop()]
-            new_tile = (tile["candle"] << 8) | new_drop["id"]
-            if new_drop["type"] not in ["HEART", "GOLD", "SUBWEAPON", "POWERUP"]:
-                new_tile += tile_id_offset
-
-            for i, entity in enumerate(tile["entities"]):
-                if i >= 2:
-                    address = rom_offset(zones[ZONE[tile["zones"][1]]], entity + 0x08)
-                else:
-                    address = rom_offset(zones[ZONE[tile["zones"][0]]], entity + 0x08)
-                patch.write_token(APTokenTypes.WRITE, address, new_tile.to_bytes(2, "little"))
-
+    # A candle's params: its look in the top four bits, the drop in the other twelve (the game reads
+    # params & 0xFFF: under 0x80 a prize, else an item, the same values as enemy drops).
+    for (item, tile), name in zip(candles, new_names):
+        drop = tile_value(io_item_name[name], {})
+        check_drop(drop, False, f"candle drop ({name})")
+        if (tile["candle"] << 8) & 0xFFF:
+            raise ValueError(f"candle 0x{tile['candle']:X} leaves no room for its drop")
+        new_tile = (tile["candle"] << 8) | drop
+        for i, entity in enumerate(tile["entities"]):
+            zone = tile["zones"][1] if i >= 2 else tile["zones"][0]
+            address = rom_offset(zones[ZONE[zone]], entity + 0x08)
+            patch.write_token(APTokenTypes.WRITE, address, new_tile.to_bytes(2, "little"))
 
 
 def items_as_bytes(item1: int, item2: int) -> tuple:

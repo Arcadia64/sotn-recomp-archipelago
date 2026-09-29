@@ -83,6 +83,7 @@ public sealed class ArchipelagoMod : IMod
         GameRules.Tick(e.Memory, e.Frame);
         Fixes.Tick(e.Memory);
         SeedPlan.ApplyResidentFiles(e.Memory);
+        PrizeTableSync.Tick(e.Memory);
 
         while (ApClient.TryDequeueToast(out var toast))
             ToastNotifications.ShowText(toast.Title, toast.Message);
