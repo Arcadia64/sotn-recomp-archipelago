@@ -21,6 +21,7 @@ public sealed class ArchipelagoMod : IMod
 
     readonly ArchipelagoPanel _panel = new();
     readonly MapPanel _map = new();
+    readonly ModifierKeys _modifierKeys = new();
 
     public void OnLoad()
     {
@@ -29,6 +30,7 @@ public sealed class ArchipelagoMod : IMod
         PanelManager.Register(_panel);
         ConnectGate.ShowPanel = () => _panel.IsOpen = true;
         PanelManager.Register(_map);
+        PanelManager.Register(_modifierKeys);
         _panel.Map = _map;
         AddBarItem(MenuKey, TogglePanel);
         Event.AddListener<VSyncEvent>(OnVSync);
@@ -43,6 +45,7 @@ public sealed class ArchipelagoMod : IMod
         MenuRegistry.Remove(MenuKey);
         RemovePanel(_panel);
         RemovePanel(_map);
+        RemovePanel(_modifierKeys);
         Log.Info("unloaded");
     }
 
