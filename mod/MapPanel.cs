@@ -63,7 +63,7 @@ public sealed class MapPanel : IPanel
             return;
         }
 
-        if (ApClient.State != ConnectionState.Connected)
+        if (!ApClient.HasSeed)
             ImGui.TextDisabled("Connect to see your seed's locations.");
         else
         {

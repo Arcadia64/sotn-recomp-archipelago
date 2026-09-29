@@ -24,7 +24,7 @@ static class Fixes
     const uint RingWalkBlockerAddr = 0x80072EE8;   // cleared by the AP fix so Alucard can't get stuck
     const int MariaAfterHippogryphFlag = 0x62;     // castle flag: conversation already seen
 
-    static bool OnSeed => ApClient.State == ConnectionState.Connected;
+    static bool OnSeed => RecompOne.Runtime.Runtime.Mem is { } m && SeedPlan.ActiveFor(m);
 
     // Recompiled.QualityOfLife is internal to the game assembly, so its BugFixes switch is set by
     // reflection. It is only forced on while connected; the player's own setting comes back after.

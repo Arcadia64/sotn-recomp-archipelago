@@ -81,7 +81,7 @@ public sealed class ArchipelagoPanel : IPanel
         ImGui.SameLine();
         ImGui.TextWrapped(ApClient.Status);
 
-        if (state == ConnectionState.Connected)
+        if (state == ConnectionState.Connected || ApClient.Offline)
         {
             ImGui.Text($"Seed {ApClient.SeedName}  |  checked {ApClient.CheckedCount}/{ApClient.LocationCount}  |  scouted {ApClient.ScoutCount}");
             if (Map != null)

@@ -43,7 +43,7 @@ static class GameRules
         var state = (GameState)m.ReadU8(Game.GameStateAddr);
         int stage = m.ReadU8(Game.StageIdAddr);
         ushort room = m.ReadU16(RoomFingerprintAddr);
-        bool connected = ApClient.State == ConnectionState.Connected;
+        bool connected = ApClient.HasSeed;
 
         RemindIfNotConnected(state, connected);
 
@@ -208,6 +208,6 @@ static class GameRules
         if (state != GameState.MainMenu) { _remindedAtMenu = false; return; }
         if (connected || _remindedAtMenu) return;
         _remindedAtMenu = true;
-        ApClient.ShowToast("Archipelago", "Not connected. Connect (menu bar > Archipelago) before starting or loading a game.");
+        ApClient.ShowToast("Archipelago", "Not connected. A new game needs the connection (menu bar > Archipelago); saves you've played on this PC can also be loaded offline.");
     }
 }

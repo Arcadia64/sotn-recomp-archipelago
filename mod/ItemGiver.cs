@@ -38,7 +38,7 @@ static class ItemGiver
 
     public static void Tick(IMemory m, long frame)
     {
-        if (ApClient.State != ConnectionState.Connected) return;
+        if (!ApClient.HasSeed) return; // offline: the items received so far, from the seed cache
         if (frame - _lastGrantFrame < GrantInterval) return;
 
         var received = ApClient.Received;

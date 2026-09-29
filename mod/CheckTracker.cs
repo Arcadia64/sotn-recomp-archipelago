@@ -32,6 +32,9 @@ static class CheckTracker
 
     static bool _goalSent;
     static bool _warnedOtherSeed;
+    static long _otherSeedWarnedAt;
+    const long OtherSeedWarningEvery = 60 * 60;
+    const float OtherSeedWarningSeconds = 15f;
 
     public static void Reset()
     {
@@ -41,18 +44,23 @@ static class CheckTracker
 
     public static void Tick(IMemory m, long frame)
     {
-        if (ApClient.State != ConnectionState.Connected || !SeedPlan.Ready) return;
+        if (!ApClient.HasSeed || !SeedPlan.Ready) return; // offline: recorded, sent once connected
         if (frame % ScanInterval != 0) return;
         if (m.ReadU8(Game.GameStateAddr) != (byte)GameState.Play) return;
 
         var link = SaveLink.Claim(m);
         if (link == SaveLink.Status.OtherSeed)
         {
-            if (!_warnedOtherSeed)
+            // Shown again every minute while it lasts.
+            if (!_warnedOtherSeed || frame - _otherSeedWarnedAt >= OtherSeedWarningEvery)
             {
+                if (!_warnedOtherSeed)
+                    Log.Error("this save belongs to a different seed or slot than the one connected: nothing is placed, sent or received.");
                 _warnedOtherSeed = true;
-                Log.Error("this save belongs to a different seed or slot; nothing will be sent or received. Load the right save or start a new game.");
-                ApClient.ShowToast("Archipelago", "This save is from a different seed. Checks and items are paused.");
+                _otherSeedWarnedAt = frame;
+                ApClient.ShowToast("Archipelago: different seed",
+                    "This save is from a different seed than the server's: the game is playing without Archipelago (nothing is placed, sent or received). Connect to this save's server, or disconnect to play it offline if you've played it on this PC.",
+                    OtherSeedWarningSeconds);
             }
             return;
         }

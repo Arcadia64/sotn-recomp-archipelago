@@ -27,6 +27,7 @@ public sealed class ArchipelagoMod : IMod
         Log.Info("loading");
         Localization.Merge(Strings);
         PanelManager.Register(_panel);
+        ConnectGate.ShowPanel = () => _panel.IsOpen = true;
         PanelManager.Register(_map);
         _panel.Map = _map;
         AddBarItem(MenuKey, TogglePanel);
@@ -36,6 +37,7 @@ public sealed class ArchipelagoMod : IMod
     public void OnUnload()
     {
         ApClient.Disconnect();
+        ConnectGate.ShowPanel = null;
         Event.RemoveListener<VSyncEvent>(OnVSync);
         MenuRegistry.Remove(MenuKey);
         RemovePanel(_panel);
@@ -83,9 +85,12 @@ public sealed class ArchipelagoMod : IMod
         GameRules.Tick(e.Memory, e.Frame);
         Fixes.Tick(e.Memory);
         SeedPlan.ApplyResidentFiles(e.Memory);
+        SeedCache.Tick(e.Frame);
+        SeedCache.UseForSave(e.Memory);
+        SeedPlan.SyncDra(e.Memory);
         PrizeTableSync.Tick(e.Memory);
 
         while (ApClient.TryDequeueToast(out var toast))
-            ToastNotifications.ShowText(toast.Title, toast.Message);
+            ToastNotifications.ShowText(toast.Title, toast.Message, null, toast.Seconds);
     }
 }

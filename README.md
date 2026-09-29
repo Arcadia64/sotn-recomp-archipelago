@@ -31,8 +31,16 @@ The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works 
 ## Playing
 
 1. At the title screen: menu bar -> **Archipelago** -> server (e.g. `archipelago.gg:38281`), slot name,
-   password -> **Connect**. Connect before starting or loading a game.
-2. Start a new game (or load a save made on the same seed). The save is tied to the seed.
+   password -> **Connect**.
+2. Start a new game, or load a save. The save is tied to its seed.
+
+- A **new game** needs the connection: it waits on the file select screen until you're connected.
+- A **save you've played on this PC** can also be loaded without connecting: the mod keeps each seed it has
+  connected to in `archipelago-seeds\` next to the game. Checks you make offline are sent, and items for you
+  received, the next time you connect.
+- A **save from a different seed** than the connected server's plays without Archipelago (nothing placed, sent
+  or received) and says so on screen. Connect to its server, or disconnect to play it offline, and it switches
+  over on the spot.
 
 Items for other players look like a round **AP** badge coloured by importance: gold for progression, blue for
 useful, grey for filler, red for traps. Picking one up shows whose item it is. Items you receive pop up and

@@ -53,6 +53,10 @@ static class SeedPlan
 
     public static bool Ready => _builtFor >= 0 && _builtFor == ApClient.ConnectionId;
 
+    // Whether the seed applies to the game in RAM: it's in, and the save isn't another seed's. A save from
+    // another seed plays as the vanilla game until the mod has that save's seed (connected or cached).
+    public static bool ActiveFor(IMemory m) => Ready && SaveLink.Check(m) != SaveLink.Status.OtherSeed;
+
     // F_GAME / F_GAME2 patch bytes by 0x2000-byte chunk, or null.
     public static Dictionary<int, List<(int Offset, byte Value)>>? GraphicsBytes(string file) =>
         Ready && _graphics.TryGetValue(file, out var chunks) ? chunks : null;
@@ -79,8 +83,11 @@ static class SeedPlan
     // Game thread, every frame: build once all scouts are in.
     public static void Update()
     {
-        if (ApClient.State != ConnectionState.Connected) return;
+        if (!ApClient.HasSeed) return;
         if (Ready || !ApClient.ScoutsComplete) return;
+
+        // A different seed (or the same one again): DRA back to its own bytes before this seed's go in.
+        if (RecompOne.Runtime.Runtime.Mem is { } before) RestoreDra(before);
 
         _byStage.Clear();
         _unsupported.Clear();
@@ -263,15 +270,48 @@ static class SeedPlan
 
     static void ApplyDra(IMemory m)
     {
-        if (!Ready || SaveLink.Check(m) == SaveLink.Status.OtherSeed) return;
+        if (!ActiveFor(m)) return;
         ApLook.WriteArt(m);
-        if (_byStage.TryGetValue(DraStage, out var list)) Write(m, list);
+        if (_byStage.TryGetValue(DraStage, out var list))
+        {
+            foreach (var w in list) KeepDraOriginal(m, w.Addr, w.Size);
+            Write(m, list);
+        }
 
         // drop_mod guaranteed (and easy): Rom.py patches the drop choice in DRA, which the recomp reads
         // (RandoPatch.func_800FF494), and the luck roll in every stage's HitDetection, which it doesn't.
         // The recomp's own "always drop" switch (RandoPatch.func_800FF460) covers the roll.
         if (m.ReadU32(GuaranteedDropSite) == GuaranteedDropWord1 && m.ReadU32(GuaranteedDropSite + 4) == GuaranteedDropWord2)
+        {
+            KeepDraOriginal(m, AlwaysDropSwitch, 4);
             m.WriteU32(AlwaysDropSwitch, AlwaysDropValue);
+        }
+        _draApplied = true;
+    }
+
+    // DRA stays in RAM all session and gets the seed's writes from boot, before a save is chosen. Its own
+    // bytes are kept (the first time each is written), so a save from another seed gets them back, and a
+    // new seed doesn't inherit writes from the previous one.
+    static readonly Dictionary<uint, byte> _draOriginal = [];
+    static bool _draApplied;
+
+    static void KeepDraOriginal(IMemory m, uint addr, int size)
+    {
+        for (uint i = 0; i < size; i++) _draOriginal.TryAdd(addr + i, m.ReadU8(addr + i));
+    }
+
+    static void RestoreDra(IMemory m)
+    {
+        foreach (var (addr, value) in _draOriginal) m.WriteU8(addr, value);
+        _draApplied = false;
+    }
+
+    // Every frame: DRA holds the seed's bytes exactly when the seed applies to the game in RAM.
+    public static void SyncDra(IMemory m)
+    {
+        bool want = ActiveFor(m);
+        if (want && !_draApplied) ApplyDra(m);
+        else if (!want && _draApplied) RestoreDra(m);
     }
 
     const uint GuaranteedDropSite = 0x800FF4C0, GuaranteedDropWord1 = 0x3C068009, GuaranteedDropWord2 = 0x34C67BF4;
@@ -291,7 +331,7 @@ static class SeedPlan
 
     static void ApplyCurrentStage(string why, IMemory m)
     {
-        if (SaveLink.Check(m) == SaveLink.Status.OtherSeed) return;
+        if (!ActiveFor(m)) return;
         int stage = m.ReadU8(Game.StageIdAddr);
         if (!_byStage.TryGetValue(stage, out var list)) return;
         Write(m, list);

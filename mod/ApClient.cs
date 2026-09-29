@@ -51,10 +51,18 @@ public static class ApClient
 
     static int _connectionId;
 
-    static readonly ConcurrentQueue<(string Title, string Message)> _toasts = new();
+    // The seed came from this PC's cache (SeedCache), not a live connection: the game can be played with
+    // it; checks are sent and items received the next time we connect.
+    static bool _offline;
+
+    static readonly ConcurrentQueue<(string Title, string Message, float Seconds)> _toasts = new();
     static readonly ConcurrentQueue<string> _deaths = new();
 
     public static ConnectionState State { get { lock (_gate) return _state; } }
+
+    // Whether the seed is known: connected, or loaded from the cache for a save played before.
+    public static bool HasSeed { get { lock (_gate) return _state == ConnectionState.Connected || _offline; } }
+    public static bool Offline { get { lock (_gate) return _offline; } }
     public static string Status { get { lock (_gate) return _status; } }
     public static string SeedName { get { lock (_gate) return _seedName; } }
     public static int Slot { get { lock (_gate) return _slot; } }
@@ -73,6 +81,92 @@ public static class ApClient
     }
 
     public static NetworkItem[] Received { get { lock (_gate) return _received.ToArray(); } }
+
+    // ---- the seed cache (SeedCache) ----
+
+    // Everything the mod needs to play this seed without a connection.
+    public static JsonObject? ExportSeed()
+    {
+        lock (_gate)
+        {
+            if (_slot < 0 || _slotData == null || _seedName.Length == 0) return null;
+            var names = new JsonObject();
+            foreach (var scout in _scouts.Values)
+            {
+                string game = _players.TryGetValue(scout.Player, out var pl) ? pl.Game : GameName;
+                if (!_itemNames.TryGetValue(game, out var map) || !map.TryGetValue(scout.Item, out var name)) continue;
+                if (names[game] is not JsonObject gameNames) names[game] = gameNames = new JsonObject();
+                gameNames[scout.Item.ToString()] = name;
+            }
+            if (_itemNames.TryGetValue(GameName, out var own))
+            {
+                if (names[GameName] is not JsonObject ownNames) names[GameName] = ownNames = new JsonObject();
+                foreach (var (id, name) in own) ownNames[id.ToString()] = name;
+            }
+            return new JsonObject
+            {
+                ["version"] = 1,
+                ["seed"] = _seedName,
+                ["slot"] = _slot,
+                ["team"] = _team,
+                ["slot_name"] = _slotName,
+                ["slot_data"] = _slotData.DeepClone(),
+                ["players"] = new JsonArray(_players.Select(kv => (JsonNode)new JsonArray(kv.Key, kv.Value.Name, kv.Value.Alias, kv.Value.Game)).ToArray()),
+                ["item_names"] = names,
+                ["checked"] = new JsonArray(_checked.Select(id => (JsonNode)JsonValue.Create(id)!).ToArray()),
+                ["missing"] = new JsonArray(_missing.Select(id => (JsonNode)JsonValue.Create(id)!).ToArray()),
+                ["scouts"] = new JsonArray(_scouts.Values.Select(Row).ToArray()),
+                ["received"] = new JsonArray(_received.Select(Row).ToArray()),
+            };
+        }
+
+        static JsonNode Row(NetworkItem i) => new JsonArray(i.Item, i.Location, i.Player, i.Flags);
+    }
+
+    // Play a cached seed while not connected.
+    public static bool ImportSeed(JsonObject seed)
+    {
+        try
+        {
+            lock (_gate)
+            {
+                if (_state != ConnectionState.Disconnected) return false;
+                _seedName = seed["seed"]!.GetValue<string>();
+                _slot = seed["slot"]!.GetValue<int>();
+                _team = seed["team"]!.GetValue<int>();
+                _slotName = seed["slot_name"]!.GetValue<string>();
+                _slotData = seed["slot_data"]!.AsObject().DeepClone().AsObject();
+                _players.Clear();
+                foreach (var row in seed["players"]!.AsArray())
+                    _players[row![0]!.GetValue<int>()] = (row[1]!.GetValue<string>(), row[2]!.GetValue<string>(), row[3]!.GetValue<string>());
+                foreach (var (game, ids) in seed["item_names"]!.AsObject())
+                {
+                    if (!_itemNames.TryGetValue(game, out var map)) _itemNames[game] = map = [];
+                    foreach (var (id, name) in ids!.AsObject()) map[long.Parse(id)] = name!.GetValue<string>();
+                }
+                _checked.Clear();
+                _missing.Clear();
+                foreach (var id in Ids(seed["checked"])) _checked.Add(id);
+                foreach (var id in Ids(seed["missing"])) _missing.Add(id);
+                _scouts.Clear();
+                foreach (var row in seed["scouts"]!.AsArray()) { var i = Item(row!); _scouts[i.Location] = i; }
+                _received.Clear();
+                foreach (var row in seed["received"]!.AsArray()) _received.Add(Item(row!));
+                _connectionId++;
+                _offline = true;
+                _status = $"Offline: seed {_seedName} as {_slotName} from this PC (connect to send checks and receive items)";
+            }
+            CheckTracker.Reset();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"couldn't use the cached seed: {ex.Message}");
+            return false;
+        }
+
+        static NetworkItem Item(JsonNode row) => new(row[0]!.GetValue<long>(), row[1]!.GetValue<long>(), row[2]!.GetValue<int>(), row[3]!.GetValue<int>());
+    }
 
     public static bool TryGetScout(long location, out NetworkItem item)
     {
@@ -93,7 +187,7 @@ public static class ApClient
 
     public static void Connect(string server, string slotName, string password)
     {
-        Disconnect();
+        Disconnect(keepOfflineSeed: true);
         _slotName = slotName.Trim();
         _password = password;
         _uuid = ClientUuid();
@@ -122,7 +216,9 @@ public static class ApClient
         }
     }
 
-    public static void Disconnect()
+    public static void Disconnect() => Disconnect(keepOfflineSeed: false);
+
+    static void Disconnect(bool keepOfflineSeed)
     {
         var cts = _cts;
         var socket = _socket;
@@ -132,6 +228,8 @@ public static class ApClient
         if (socket != null) _ = socket.CloseAsync().ContinueWith(_ => socket.Dispose());
         lock (_gate)
         {
+            if (keepOfflineSeed && _offline) return;
+            _offline = false;
             _slot = -1;
             _slotData = null;
             _checked.Clear();
@@ -309,6 +407,7 @@ public static class ApClient
         lock (_gate)
         {
             _connectionId++;
+            _offline = false;
             _scouts.Clear();
             _slot = p["slot"]!.GetValue<int>();
             _team = p["team"]!.GetValue<int>();
@@ -324,7 +423,7 @@ public static class ApClient
         CheckTracker.Reset();
         SetState(ConnectionState.Connected, $"Connected as {_slotName} (slot {Slot})");
         Log.Info($"connected: slot {Slot}, {CheckedCount}/{LocationCount} locations checked");
-        _toasts.Enqueue(("Archipelago", $"Connected as {_slotName}"));
+        _toasts.Enqueue(("Archipelago", $"Connected as {_slotName}", ToastSeconds));
 
         // What is at each of our locations: which item, whose it is, and how important.
         Send(new JsonObject
@@ -439,7 +538,7 @@ public static class ApClient
             var item = Items(new JsonArray(itemNode.DeepClone())).First();
             Log.Item(text, item);
             if (item.Player == Slot && receiving != Slot)
-                _toasts.Enqueue(($"Sent ({ItemClass.Name(item)})", $"{ItemName(item.Item, receiving)} to {PlayerName(receiving)}"));
+                _toasts.Enqueue(($"Sent ({ItemClass.Name(item)})", $"{ItemName(item.Item, receiving)} to {PlayerName(receiving)}", ToastSeconds));
             return;
         }
         Log.Info(text);
@@ -540,9 +639,11 @@ public static class ApClient
 
     // ---- game thread ----
 
-    public static bool TryDequeueToast(out (string Title, string Message) toast) => _toasts.TryDequeue(out toast);
+    public static bool TryDequeueToast(out (string Title, string Message, float Seconds) toast) => _toasts.TryDequeue(out toast);
 
-    public static void ShowToast(string title, string message) => _toasts.Enqueue((title, message));
+    const float ToastSeconds = 5f;
+
+    public static void ShowToast(string title, string message, float seconds = ToastSeconds) => _toasts.Enqueue((title, message, seconds));
 
     public static bool TryDequeueDeath(out string cause) => _deaths.TryDequeue(out cause!);
 

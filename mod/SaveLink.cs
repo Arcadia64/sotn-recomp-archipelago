@@ -33,6 +33,9 @@ static class SaveLink
         return h == 0 ? 1 : h;
     }
 
+    // The seed fingerprint the save in RAM holds (0 = not linked).
+    public static uint StoredHash(IMemory m) => m.ReadU32(Addr(SeedFlag));
+
     public static Status Check(IMemory m)
     {
         uint stored = m.ReadU32(Addr(SeedFlag));
