@@ -35,6 +35,9 @@ Built, verified offline or by reading the code, not yet seen in game:
   (`Special.ShopEntryWithItem`, `ApLook` shop hooks).
 - DeathLink, auto_heal, Library card soft-lock escapes, Cave demon wall, tracker data storage keys.
 - Always-on AP fixes (`Fixes.cs`).
+- Items that fall out of walls/vases (Locations.py `despawn`) don't vanish before they're picked up
+  (`DespawnDrops.cs`, hooks generated per stage). Other players' floor items already sent (picked up before
+  a death or reload, or `!collect`ed) don't appear again (`CheckTracker.HideSentItems`).
 - Every AP option that changes the game, including the ones the recomp can't take from the patch bytes
   alone (`OptionHooks.cs`, `OptionData.g.cs`, graphics/SEL/RIC payload keys): see the status table in
   `docs/research/options-audit.md`. Offline: payload equals the patch for every file, all 189 hooks
@@ -49,7 +52,11 @@ Next:
      warns when connecting to a BizHawk slot (and the BizHawk client could refuse a recomp slot);
    - make it obvious which apworld is installed (distinct file name or version label), while keeping
      the game name "Symphony of the Night" so PopTracker and mixed BizHawk/recomp multiworlds keep working.
-3. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
+3. AP world: its docs say progression is kept off despawn spots, but `Rules.py` only keeps relics off the
+   walls (and progression off `TOP_Turkey_1`). A player's own Spike breaker, rings or Holy glasses can land on
+   a wall and, on BizHawk, vanish. The mod no longer lets them vanish; forbid the player's own progression
+   at `despawn` locations in the fork too (changes generation, so after the test pass).
+4. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
 
 ---
 

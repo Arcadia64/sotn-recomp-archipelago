@@ -1087,4 +1087,7 @@ static partial class LocationData
         new(540, "Enemysanity - Death", Detect.Enemy, [0x8003BF8D], 7, 0x00, [0x25, 0x3C], "", false,
             new(-1, [], [], -1, -1, -1, -1, false, [], [], [], [], false, [], 0)),
     ];
+
+    // Spots whose item falls out and would vanish if not picked up in time (Locations.py "despawn")
+    public static readonly long[] Despawn = [40, 95, 118, 119, 180, 181, 182, 183, 186, 191, 287, 312, 362, 363, 364, 365];
 }

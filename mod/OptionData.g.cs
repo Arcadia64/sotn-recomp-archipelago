@@ -230,6 +230,15 @@ static class OptionHookSites
     [PostHook("rbo0", "HitDetection_rbo0")] static void Faerie_rbo0Out(CpuContext c, IMemory m) => OptionHooks.FaerieOut(m);
     [PreHook("no3", "HitDetection_no3")] static void Faerie_no3In(CpuContext c, IMemory m) => OptionHooks.FaerieIn(m);
     [PostHook("no3", "HitDetection_no3")] static void Faerie_no3Out(CpuContext c, IMemory m) => OptionHooks.FaerieOut(m);
+    [PreHook("no1", "EntityEquipItemDrop_no1")] static void Drop_no1(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("chi", "EntityEquipItemDrop_chi")] static void Drop_chi(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("np3", "EntityEquipItemDrop_np3")] static void Drop_np3(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("top", "EntityEquipItemDrop_top")] static void Drop_top(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("nz1", "EntityEquipItemDrop_nz1")] static void Drop_nz1(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("rno1", "RNO1_EntityEquipItemDrop")] static void Drop_rno1(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("rno3", "RNO3_EntityEquipItemDrop")] static void Drop_rno3(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("rnz1", "func_801B26EC_rnz1")] static void Drop_rnz1(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
+    [PreHook("no3", "EntityEquipItemDrop_no3")] static void Drop_no3(CpuContext c, IMemory m) => DespawnDrops.Keep(c, m);
     [PreHook("bo0", "func_801AD338")] static void Music_bo0_func_801AD338In(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);
     [PostHook("bo0", "func_801AD338")] static void Music_bo0_func_801AD338Out(CpuContext c, IMemory m) => OptionHooks.MusicOut(m);
     [PreHook("bo0", "func_801B7CC8")] static void Music_bo0_func_801B7CC8In(CpuContext c, IMemory m) => OptionHooks.MusicIn(m);

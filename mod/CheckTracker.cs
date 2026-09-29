@@ -70,6 +70,8 @@ static class CheckTracker
         if (found.Contains(Dopp40Location) && ApClient.IsMissing(Dopp10Location) && !found.Contains(Dopp10Location))
             found.Add(Dopp10Location);
 
+        HideSentItems(m, slot);
+
         if (found.Count > 0)
         {
             foreach (var id in found)
@@ -86,6 +88,23 @@ static class CheckTracker
         }
 
         CheckGoal(m);
+    }
+
+    // Another player's item that has already been sent (picked up before a death or reload, or taken
+    // with !collect) is set as picked up in this save, so it doesn't appear again. Only floor items with
+    // an item-table slot, where that is one pickup flag. Our own items stay: the server doesn't send
+    // them back, so after a reload they have to be picked up again.
+    static void HideSentItems(IMemory m, int slot)
+    {
+        foreach (var loc in LocationData.All)
+        {
+            if (loc.Kind != Detect.Loot || loc.Place.PickupFlags.Length == 0) continue;
+            if (!ApClient.IsChecked(loc.Id) || SeedPlan.IsUnsupported(loc.Id)) continue;
+            if (!ApClient.TryGetScout(loc.Id, out var scout) || scout.Player == slot) continue;
+            byte bit = (byte)(1 << loc.Place.PickupBit);
+            foreach (var flag in loc.Place.PickupFlags)
+                if ((m.ReadU8(flag) & bit) == 0) m.WriteU8(flag, (byte)(m.ReadU8(flag) | bit));
+        }
     }
 
     static bool IsCollected(IMemory m, LocationInfo loc, int slot)
