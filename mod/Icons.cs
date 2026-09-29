@@ -14,6 +14,13 @@ static class Icons
     static bool _looked;
     static readonly Dictionary<string, uint> _textures = [];
 
+    // Names whose icon file is spelled differently.
+    static readonly Dictionary<string, string> IconNames = new()
+    {
+        ["Sirloin"] = "Sirlion",
+        ["Cat-eye circl."] = "Cat eye circlet",
+    };
+
     // The icon's texture, or 0 if there isn't one.
     public static uint Get(string itemName)
     {
@@ -24,7 +31,10 @@ static class Icons
             var method = Method();
             if (method != null)
             {
-                object?[] args = [itemName, 0u];
+                string icon = IconNames.GetValueOrDefault(itemName, itemName);
+                icon = new string(icon.Select(ch => char.IsLetterOrDigit(ch) ? ch : ch is '-' or ' ' ? ' ' : '\0')
+                    .Where(ch => ch != '\0').ToArray()); // "King's stone" -> KingsStone, "Str. potion" -> StrPotion
+                object?[] args = [icon, 0u];
                 if (method.Invoke(null, args) is true) texture = (uint)args[1]!;
             }
         }

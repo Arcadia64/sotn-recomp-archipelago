@@ -74,16 +74,19 @@ public sealed class MessagesPanel : IPanel
 
     void DrawMessages()
     {
-        bool changed = false;
-        for (int i = 0; i < Filters.Length; i++)
+        if (UiOptions.Show)
         {
-            if (i > 0) ImGui.SameLine();
-            changed |= ImGui.Checkbox(Filters[i].Label, ref _show[i]);
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Filters[i].Tip);
+            bool changed = false;
+            for (int i = 0; i < Filters.Length; i++)
+            {
+                if (i > 0) ImGui.SameLine();
+                changed |= ImGui.Checkbox(Filters[i].Label, ref _show[i]);
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Filters[i].Tip);
+            }
+            if (changed) Save();
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Clear")) Messages.Clear();
         }
-        if (changed) Save();
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Clear")) Messages.Clear();
 
         float inputHeight = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y;
         if (ImGui.BeginChild("##log", new Vector2(0, -inputHeight), ImGuiChildFlags.Border))
@@ -199,10 +202,13 @@ public sealed class MessagesPanel : IPanel
 
     void DrawHints()
     {
-        bool changed = ImGui.Checkbox("Only hints involving me", ref _hintsOnlyMine);
-        ImGui.SameLine();
-        changed |= ImGui.Checkbox("Hide found", ref _hintsHideFound);
-        if (changed) Save();
+        if (UiOptions.Show)
+        {
+            bool changed = ImGui.Checkbox("Only hints involving me", ref _hintsOnlyMine);
+            ImGui.SameLine();
+            changed |= ImGui.Checkbox("Hide found", ref _hintsHideFound);
+            if (changed) Save();
+        }
 
         var hints = Messages.Hints.Where(h => (!_hintsOnlyMine || Involves(h)) && (!_hintsHideFound || !h.Found))
             .OrderBy(h => h.Found).ThenByDescending(h => h.Status).ToList();

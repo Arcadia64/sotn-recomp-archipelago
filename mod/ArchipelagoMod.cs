@@ -18,6 +18,7 @@ public sealed class ArchipelagoMod : IMod
           "menu.archipelago.map": {"en": "Map"},
           "menu.archipelago.items": {"en": "Items"},
           "menu.archipelago.messages": {"en": "Messages"},
+          "menu.archipelago.options": {"en": "Show window options"},
           "panel.archipelago": {"en": "Archipelago"},
           "panel.archipelago.map": {"en": "Archipelago map"},
           "panel.archipelago.items": {"en": "Archipelago items"},
@@ -85,6 +86,8 @@ public sealed class ArchipelagoMod : IMod
         Toggle(menu, "menu.archipelago.map", _map);
         Toggle(menu, "menu.archipelago.items", _items);
         Toggle(menu, "menu.archipelago.messages", _messages);
+        // Off: the windows show only their content (for streaming).
+        menu.Check("menu.archipelago.options", () => UiOptions.Show, show => UiOptions.Show = show);
     }
 
     static void Toggle(MenuBuilder menu, string key, IPanel panel) => menu.Check(key, () => panel.IsOpen, open => panel.IsOpen = open);

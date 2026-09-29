@@ -75,7 +75,7 @@ public sealed class MapPanel : IPanel
             RefreshSpots();
             var you = WhereYouAre();
             bool inverted = _view switch { View.Castle => false, View.Inverted => true, _ => you?.Inverted ?? false };
-            DrawControls();
+            if (UiOptions.Show) DrawControls();
             DrawSummary();
             DrawMap(inverted, you);
         }
@@ -133,11 +133,20 @@ public sealed class MapPanel : IPanel
             ImGui.Text($"{inLogic} of the {left} left reachable now" + (enemies > 0 ? $"; enemies: {enemiesInLogic} of {enemies}" : ""));
         }
 
-        Legend(logic ? InLogic : NoLogic, logic ? "Reachable now" : "Not checked");
-        if (logic) { ImGui.SameLine(); Legend(OutOfLogic, "Not yet"); }
-        if (_showChecked) { ImGui.SameLine(); Legend(Checked, "Checked"); }
-        ImGui.SameLine();
-        Legend(0xFFFFFFFF, "You are here", square: true);
+        if (UiOptions.Show)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.BeginTooltip();
+                Legend(logic ? InLogic : NoLogic, logic ? "Reachable now" : "Not checked");
+                if (logic) Legend(OutOfLogic, "Blocked: needs items you don't have yet");
+                Legend(Checked, "Checked");
+                Legend(0xFFFFFFFF, "You are here", square: true);
+                ImGui.EndTooltip();
+            }
+        }
         if (!logic) ImGui.TextDisabled("This seed has no logic data, so reachability isn't shown.");
     }
 

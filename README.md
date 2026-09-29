@@ -57,10 +57,14 @@ their title bar onto it):
   on hover. Rooms you haven't explored (and their locations) can be shown faintly, or stay hidden until you
   explore them.
 - **Items**: your relics, relics of Vlad, key items, familiar cards and vessels, with where each came from (or
-  where a hint says it is), and what you still need for Dracula.
+  where a hint says it is), and what you still need for Dracula; with "All items", every weapon, armor,
+  accessory and usable item too, each kind in its own section.
 - **Messages**: Archipelago's text client: chat, items found and sent, hints and server messages, each kind
   shown or hidden, a table of your hints, and a line to chat or send commands (`!hint`, `!release`...). The
   game ignores the keyboard while you type there.
+
+**Show window options** in the same menu, turned off, hides the checkboxes, filters and sliders, so the windows
+show only their content (cleaner on stream).
 
 ## For developers
 
