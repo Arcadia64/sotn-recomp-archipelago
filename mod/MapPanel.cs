@@ -104,8 +104,8 @@ public sealed class MapPanel : IPanel
         changed |= ImGui.Checkbox("Show what's there", ref _showItems);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Spoilers: when you hover a location, say which item is there and whose it is.");
         ImGui.SameLine();
-        changed |= ImGui.Checkbox("Show counts", ref _showCounts);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Show how many locations you've checked and how many you can reach now, above the map.");
+        changed |= ImGui.Checkbox("Show progress", ref _showCounts);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Above the map: how many locations you've checked, and how many of the rest you can reach now.");
         if (!changed) return;
         _view = (View)view;
         var settings = RecompOne.Runtime.Runtime.View;
