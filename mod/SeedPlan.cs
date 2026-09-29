@@ -12,7 +12,7 @@ namespace SotnArchipelago;
 // What this seed writes into RAM, per stage, and the stage-load hook that writes it.
 //
 // Seeds from this project's AP world carry the patch's own bytes in slot_data["recomp"]
-// (apworld/sotn/Recomp.py): those are written as they are, exactly as the disc patch would have
+// (apworld/sotn_recomp/Recomp.py): those are written as they are, exactly as the disc patch would have
 // them, and the recomp's rewrites read what they need back from RAM. Seeds from the unmodified AP
 // world have no such data; Placement.cs works the item placement out from the scouts instead.
 // Either way, other players' items are then given the AP look (Placement Look.ApItem).
@@ -123,10 +123,10 @@ static class SeedPlan
         _builtFor = ApClient.ConnectionId;
         Log.Info($"placement ready ({(_fromPayload ? "patch data from the seed" : "worked out from scouts")}): "
                + $"{_byStage.Count} stage(s), {_unsupported.Count} spot(s) not placed yet");
-        // Easy to miss in the log: a seed from fdelduque's apworld has no patch data, so only item
-        // placement and the options the mod reads itself apply.
+        // Easy to miss in the log: without the seed's patch data (a world version this mod can't read),
+        // only item placement and the options the mod reads itself apply.
         if (!_fromPayload)
-            ApClient.ShowToast("Archipelago", "Seed not made with this mod's sotn.apworld: items are placed, but most seed options (colours, music, drops, stats...) won't apply");
+            ApClient.ShowToast("Archipelago", "This seed is from another version of sotn_recomp.apworld: items are placed, but most seed options (colours, music, drops, stats...) won't apply. Update the mod or the world.");
 
         // Mid-game connect: place items in the stage already loaded. Only during normal play, when
         // the loaded overlay is the current stage's; otherwise the next stage load does it.
@@ -137,7 +137,7 @@ static class SeedPlan
             ApplyCurrentStage("connected", m);
     }
 
-    // slot_data["recomp"] from apworld/sotn/Recomp.py: {"version": 1, "files": {key: [[offset, hex], ...]}}
+    // slot_data["recomp"] from apworld/sotn_recomp/Recomp.py: {"version": 1, "files": {key: [[offset, hex], ...]}}
     static bool ReadPayload(JsonObject payload, bool holdBackLibrarianItemPatch)
     {
         int version = payload["version"]?.GetValue<int>() ?? 0;

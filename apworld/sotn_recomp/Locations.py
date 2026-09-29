@@ -1,6 +1,6 @@
 from BaseClasses import Location
 from .data.Zones import ZONE, ZONE_TO_NAME
-from .data.Constants import RELIC_NAMES
+from .data.Constants import RELIC_NAMES, GAME_NAME
 
 LOCATION_TO_ABREV = dict()
 ABREV_TO_LOCATION = dict()
@@ -4771,4 +4771,4 @@ for k, v in locations.items():
 
 
 class SotnLocation(Location):
-    game = "Symphony of the Night"
+    game = GAME_NAME

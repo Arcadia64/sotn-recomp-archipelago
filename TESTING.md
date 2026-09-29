@@ -34,11 +34,12 @@ Connect before starting a new game so the seed's options (like skipping the prol
 
 ## Making a new seed
 
-Player files are in `ref\archipelago\Players\` (`alucard.yaml` is the one you play, `maria.yaml` is a second slot nobody plays).
+Player files are in `ref\archipelago\Players\` (`alucard.yaml` is the one you play, `maria.yaml` is a second slot nobody plays),
+both for `game: Symphony of the Night (Recomp)`, this project's world.
 Build this project's AP world into Archipelago first (from the project folder):
 
 ```powershell
-py -3.12 tools\build_apworld.py; Copy-Item dist\sotn.apworld ref\archipelago\custom_worlds\ -Force
+py -3.12 tools\build_apworld.py; Copy-Item dist\sotn_recomp.apworld ref\archipelago\custom_worlds\ -Force
 ```
 
 Then, in the `ref\archipelago` window:

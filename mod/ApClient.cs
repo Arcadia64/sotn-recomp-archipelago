@@ -17,7 +17,8 @@ public enum ConnectionState { Disconnected, Connecting, Connected }
 // and drained on the game thread (see Drain*), so game RAM is never touched from here.
 public static class ApClient
 {
-    public const string GameName = "Symphony of the Night";
+    // This project's AP world (apworld/sotn_recomp). fdelduque's world for BizHawk is "Symphony of the Night".
+    public const string GameName = "Symphony of the Night (Recomp)";
 
     // Remote items and starting inventory come from the server; our own items are placed in the game.
     const int ItemsHandling = 0b101;
@@ -363,6 +364,11 @@ public static class ApClient
         var errors = p["errors"]?.AsArray().Select(e => e?.GetValue<string>()).ToList() ?? [];
         var reason = errors.Count > 0 ? string.Join(", ", errors) : "unknown reason";
         Log.Error($"connection refused: {reason}");
+        if (errors.Contains("InvalidGame"))
+        {
+            Log.Error($"that slot isn't a \"{GameName}\" slot: if it's Symphony of the Night, it was generated with fdelduque's world (for BizHawk); generate with sotn_recomp.apworld");
+            ShowToast("Archipelago", "That slot isn't for this game. Was it generated with sotn_recomp.apworld?");
+        }
         _refused = true;
         _cts?.Cancel();
         SetState(ConnectionState.Disconnected, $"Refused: {reason}");

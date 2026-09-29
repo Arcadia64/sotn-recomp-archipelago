@@ -10,7 +10,7 @@ Work in progress. See [PLAN.md](PLAN.md) for what's done and what's next.
 ## What you need
 
 - SymphonyRecomp v0.5.1b or newer, set up with your US disc as its README describes.
-- `archipelago.zip` (the mod) and `sotn.apworld` (the Archipelago world) from this project's releases.
+- `archipelago.zip` (the mod) and `sotn_recomp.apworld` (the Archipelago world) from this project's releases.
 
 ## Setting up
 
@@ -20,12 +20,13 @@ Work in progress. See [PLAN.md](PLAN.md) for what's done and what's next.
 
 ## Generating a seed
 
-Whoever generates the multiworld installs `sotn.apworld` in Archipelago (Archipelago Launcher -> Install
-APWorld) and uses it for the SotN player files. Options are the same as the SotN world by fdelduque, which this
-world is based on; generate a template YAML from the launcher.
+Whoever generates the multiworld installs `sotn_recomp.apworld` in Archipelago (Archipelago Launcher -> Install
+APWorld). Its game is **Symphony of the Night (Recomp)**: player files say `game: Symphony of the Night (Recomp)`
+(generate a template from the launcher). Options are the same as fdelduque's Symphony of the Night world (for
+BizHawk), which this world is based on. The two are separate games and can be installed side by side; this mod
+only plays seeds from this world. There is no patch file: the mod gets everything from the server.
 
-Seeds made with the original SotN world 0.8.16 also work for item placement, checks and items, but options that
-change the game itself need this world's seeds (it sends the mod the data it needs).
+The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) works with this world as it is.
 
 ## Playing
 
@@ -41,8 +42,10 @@ appear in your inventory right away (only during normal play, never mid-menu or 
 ## For developers
 
 - `mod/` - the SymphonyRecomp mod (C#, compiled by the game at load time)
-- `apworld/sotn/` - the Archipelago world, a fork of fdelduque's 0.8.16.1 with fixes and a data export for the mod
-- `tools/` - table generator, packaging, and offline checks that compare the mod's placement with the AP patch
+- `apworld/sotn_recomp/` - the Archipelago world ("Symphony of the Night (Recomp)"), from fdelduque's 0.8.16.1
+  with fixes, the BizHawk parts removed, and the data export for the mod
+- `tools/` - table generator, packaging, and offline checks (the mod's placement against fdelduque's patch, the
+  payload against the world's own writes, hooks against a built game)
 - `docs/research/` - notes on the AP world, the game's memory and the recomp
 - [TESTING.md](TESTING.md) - running a local server and the game; [PLAN.md](PLAN.md) - design, status, PC setup
 

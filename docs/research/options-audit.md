@@ -25,7 +25,7 @@ Everything MISSING or PARTIAL below has been implemented (not yet tested in game
 
 ## Original audit
 
-Scope: every option in `apworld/sotn/Options.py` that changes the game. Pure-logic options (item_pool,
+Scope: every option in `apworld/sotn_recomp/Options.py` that changes the game. Pure-logic options (item_pool,
 boss_locations, enemysanity, enemy_scroll, no_logic, accessibility, start_inventory, powerful_items as a
 pool option) are skipped. Options the mod already implements natively (remove_prologue, death_link,
 auto_heal, the always-on accessibility fixes, walls, special spots) are only mentioned where this audit

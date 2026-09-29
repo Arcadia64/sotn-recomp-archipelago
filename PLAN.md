@@ -44,19 +44,17 @@ Built, verified offline or by reading the code, not yet seen in game:
   resolve (`tools/check_hooks.py`).
 
 Next:
-1. In-game test pass of everything in the "not yet seen in game" list.
-2. Keep recomp and BizHawk SotN from getting mixed up (after the test pass). Today our `sotn.apworld` uses
-   the same game name and file name as fdelduque's, so it silently replaces it, and it makes a BizHawk
-   `.apsotn` patch for every slot, recomp players included, who don't need it. Ideas, to decide then:
-   - a per-player option (e.g. `platform: recomp | bizhawk`): recomp slots get no `.apsotn`; the mod
-     warns when connecting to a BizHawk slot (and the BizHawk client could refuse a recomp slot);
-   - make it obvious which apworld is installed (distinct file name or version label), while keeping
-     the game name "Symphony of the Night" so PopTracker and mixed BizHawk/recomp multiworlds keep working.
-3. AP world: its docs say progression is kept off despawn spots, but `Rules.py` only keeps relics off the
-   walls (and progression off `TOP_Turkey_1`). A player's own Spike breaker, rings or Holy glasses can land on
-   a wall and, on BizHawk, vanish. The mod no longer lets them vanish; forbid the player's own progression
-   at `despawn` locations in the fork too (changes generation, so after the test pass).
-4. Tracker PR (location 394, enemysanity 400-540); offer the AP world fixes upstream.
+1. Archipelago map window in the mod (in progress): the recomp's castle map images and position code, every
+   location of the seed as a dot (checked / reachable / not yet), names on hover. Needs each location's map
+   position (from the game's room data, in the generator) and the AP logic ported to C#.
+2. In-game test pass of everything in the "not yet seen in game" list. For the despawn fix, check the two
+   Castle Keep spots (a ledge wall and a vase, detected by pickup, not by wall flag) as well as the walls.
+3. Tracker PR (location 394, enemysanity 400-540).
+
+Decided: BizHawk isn't supported. The AP world is its own game, "Symphony of the Night (Recomp)"
+(`apworld/sotn_recomp`, `sotn_recomp.apworld`), with the same item and location ids as fdelduque's world so
+its PopTracker pack still works (PopTracker connects as a plain tracker, without a game name). No patch file,
+no BizHawk client; it can be installed next to fdelduque's world.
 
 ---
 
@@ -79,7 +77,7 @@ Next:
 6. Upstream AP world 0.8.16.1: download `sotn.apworld` from
    https://github.com/fdelduque/Archipelago/releases/tag/b08161 into `ref/ap-world/apworld-b08161/` and unzip
    it there (`tools/gen_location_data.py` reads `ref/ap-world/apworld-b08161/sotn` by default).
-7. `tools/make_test_seeds.sh` generates the stock and fork test seeds; `tools/deploy-mod.sh` copies `mod/`
+7. `tools/make_test_seeds.sh` generates test seeds with fdelduque's world ("stock") and ours ("fork"), both installed; `tools/deploy-mod.sh` copies `mod/`
    into the game's `mods/archipelago` (enable it once in the game's Mods menu); `dotnet build tools/modcheck`
    compile-checks the mod. See TESTING.md.
 
@@ -175,6 +173,8 @@ Keep comfort features (easy spell/wing/grav inputs, extra i-frames, flash remova
    }
    ```
    A few KB to tens of KB. The BizHawk patch is still produced exactly as today, so one seed works on both.
+   (As built: `slot_data["recomp"]` carries the patch's own writes per file, see `apworld/sotn_recomp/Recomp.py`;
+   and the world later became its own game without the BizHawk patch, see Status.)
 3. Fix the bugs confirmed in the notes (section 7): easy difficulty zeroing all drops; `tile_filter` editing the shared `io_items` table (candles mostly skipped); "Spike breaker"/"Gold ring"/"Silver ring" capitalisation in the drop filter; duplicate shop price address.
 4. Bump the world version. The mod checks `recomp.version` on connect and refuses seeds it can't reproduce, with a plain message.
 

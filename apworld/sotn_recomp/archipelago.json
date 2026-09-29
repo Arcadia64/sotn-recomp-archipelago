@@ -1,9 +1,9 @@
 {
-  "game": "Symphony of the Night",
-  "world_version": "0.8.17",
+  "game": "Symphony of the Night (Recomp)",
+  "world_version": "0.2.0",
   "authors": [
-    "fdelduque",
-    "Arcadia64"
+    "Arcadia64",
+    "fdelduque"
   ],
   "minimum_ap_version": "0.6.0",
   "compatible_version": 6,

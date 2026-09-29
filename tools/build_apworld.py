@@ -1,4 +1,4 @@
-"""Zip apworld/sotn into dist/sotn.apworld (what Archipelago's "Install APWorld" takes).
+"""Zip apworld/sotn_recomp into dist/sotn_recomp.apworld (what Archipelago's "Install APWorld" takes).
 
 Usage: py -3.12 tools/build_apworld.py [output path]
 """
@@ -7,11 +7,12 @@ import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "apworld", "sotn")
+PACKAGE = "sotn_recomp"  # the world's module name; the .apworld and its folder must match it
+SRC = os.path.join(ROOT, "apworld", PACKAGE)
 
 
 def main():
-    out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "dist", "sotn.apworld")
+    out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "dist", f"{PACKAGE}.apworld")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     count = 0
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
@@ -21,9 +22,9 @@ def main():
                 if f.endswith(".pyc"):
                     continue
                 path = os.path.join(root, f)
-                z.write(path, os.path.join("sotn", os.path.relpath(path, SRC)))
+                z.write(path, os.path.join(PACKAGE, os.path.relpath(path, SRC)))
                 count += 1
-        z.write(os.path.join(ROOT, "apworld", "LICENSE"), os.path.join("sotn", "LICENSE"))
+        z.write(os.path.join(ROOT, "apworld", "LICENSE"), os.path.join(PACKAGE, "LICENSE"))
         count += 1
     print(f"wrote {count} files to {out}")
 

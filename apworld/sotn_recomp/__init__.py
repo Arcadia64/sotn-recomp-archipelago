@@ -1,7 +1,6 @@
-import pkgutil
 from typing import ClassVar, Dict, Tuple, Any, List
 
-import settings, typing, os
+import typing, os
 from worlds.AutoWorld import WebWorld, World
 from BaseClasses import Tutorial, MultiWorld, ItemClassification, Item
 from Options import AssembleOptions
@@ -11,11 +10,10 @@ from .Locations import locations, SotnLocation
 from .Regions import create_regions, create_regions_no_logic
 from .Rules import set_rules, set_no_logic_rules
 from .Options import SOTNOptions, sotn_option_groups
-from .Rom import SotnProcedurePatch, write_tokens
+from .Rom import SotnPatchData, write_tokens
 from .Recomp import recomp_payload
 from .Groups import ITEM_GROUPS, LOCATION_GROUPS
-from .client import SotNClient
-#from .test_client import SotNTestClient
+from .data.Constants import GAME_NAME
 
 
 # Thanks for Fuzzy for Archipelago Manual it all started there
@@ -25,31 +23,14 @@ from .client import SotNClient
 # I wish I have discovered most of those earlier, would save me a lot of RAM searches
 # Thanks for all the help from the folks at Long Library and AP Discords.
 
-class SotnSettings(settings.Group):
-    class RomFile(settings.UserFilePath):
-        """File name of the SOTN US rom"""
-        description = "Symphony of the Night (SLU067) ROM File"
-        copy_to = "Castlevania - Symphony of the Night (USA) (Track 1).bin"
-        md5s = [SotnProcedurePatch.hash]
-
-    rom_file: RomFile = RomFile(RomFile.copy_to)
-
-    class AudioFile(settings.UserFilePath):
-        """File name of the SOTN Track 2"""
-        description = "Symphony of the Night (SLU067) Audio File"
-        copy_to = "Castlevania - Symphony of the Night (USA) (Track 2).bin"
-
-    audio_file: AudioFile = AudioFile(AudioFile.copy_to)
-
-
 class SotnWeb(WebWorld):
     setup = Tutorial(
         "Multiworld Setup Guide",
-        "A guide to setting up Symphony of the Night for MultiWorld.",
+        "A guide to setting up Symphony of the Night on SymphonyRecomp for MultiWorld.",
         "English",
         "setup_en.md",
         "setup/en",
-        ["FDelduque"]
+        ["Arcadia64"]
     )
 
     tutorials = [setup]
@@ -59,21 +40,24 @@ class SotnWeb(WebWorld):
 EXTRA_ADD = ["Duplicator", "Crissaegrim", "Ring of varda", "Mablung sword", "Masamune", "Marsil", "Yasutsuna"]
 
 
+# Set to write each slot's disc writes (token_data format) next to the seed, for tools/verify_payload.py.
+DEBUG_TOKENS_ENV = "SOTN_RECOMP_DEBUG_TOKENS"
+
+
 class SotnWorld(World):
     """
-    Symphony of the Night is a metroidvania developed by Konami
-    and release for Sony Playstation and Sega Saturn in (add year after googling)
+    Castlevania: Symphony of the Night (Konami, 1997), played on SymphonyRecomp, the native PC version
+    of the PlayStation game, with the Archipelago mod. Explore Dracula's castle as Alucard; relics and
+    items are shuffled across the multiworld.
     """
-    game: ClassVar[str] = "Symphony of the Night"
+    game: ClassVar[str] = GAME_NAME
     web: ClassVar[WebWorld] = SotnWeb()
-    settings_key = "sotn_settings"
-    settings: ClassVar[SotnSettings]
     options_dataclass = SOTNOptions
     options: SOTNOptions
     data_version: ClassVar[int] = 1
     required_client_version: Tuple[int, int, int] = (0, 4, 5)
     extra_add: List[str]
-    sotn_patch: SotnProcedurePatch
+    sotn_patch: SotnPatchData
 
     item_name_groups = ITEM_GROUPS
     location_name_groups = LOCATION_GROUPS
@@ -218,9 +202,8 @@ class SotnWorld(World):
             set_rules(self.multiworld, self.player, self.options)
 
     def post_fill(self) -> None:
-        # Build the patch once, here, so the BizHawk patch file and the recomp mod's slot data come
-        # from the same random rolls: generate_output and fill_slot_data run at the same time.
-        self.sotn_patch = SotnProcedurePatch(player=self.player, player_name=self.player_name)
+        # The game changes, worked out once (with this world's random rolls) for fill_slot_data.
+        self.sotn_patch = SotnPatchData()
         write_tokens(self, self.sotn_patch)
 
     def fill_slot_data(self) -> Dict[str, Any]:
@@ -232,5 +215,8 @@ class SotnWorld(World):
         return slot_data
 
     def generate_output(self, output_directory: str) -> None:
-        out_file_name = self.multiworld.get_out_file_name_base(self.player)
-        self.sotn_patch.write(os.path.join(output_directory, f"{out_file_name}{self.sotn_patch.patch_file_ending}"))
+        # Nothing to hand out: the mod gets everything from slot_data when it connects.
+        if os.environ.get(DEBUG_TOKENS_ENV):
+            out_file_name = self.multiworld.get_out_file_name_base(self.player)
+            with open(os.path.join(output_directory, f"{out_file_name}.sotn_tokens"), "wb") as f:
+                f.write(self.sotn_patch.get_token_binary())

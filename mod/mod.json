@@ -1,8 +1,8 @@
 {
   "id": "archipelago",
   "name": "Archipelago",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Arcadia64",
-  "description": "Archipelago multiworld for Symphony of the Night: connect to an Archipelago server, play your seed on a vanilla disc, send and receive items.",
+  "description": "Archipelago multiworld for Symphony of the Night: connect to an Archipelago server, play your seed on a vanilla disc, send and receive items. Seeds are generated with sotn_recomp.apworld (game \"Symphony of the Night (Recomp)\").",
   "dependencies": []
 }

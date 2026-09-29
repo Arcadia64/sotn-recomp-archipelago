@@ -1,12 +1,14 @@
-"""Check the forked world's slot_data["recomp"] payload against the .apsotn patch of the same seed.
+"""Check the world's slot_data["recomp"] payload against its own writes into the disc image.
 
 Usage (Archipelago venv): ref/archipelago/.venv/Scripts/python.exe tools/verify_payload.py <seed zip> [slot ...]
 
-Every byte the patch writes into a stage/boss file or DRA must be in the payload with the same value
-(except DRA's seed block, which only the BizHawk client reads), and the payload must hold nothing else.
+The seed must be generated with SOTN_RECOMP_DEBUG_TOKENS=1 (tools/make_test_seeds.sh does): the world
+then saves each slot's disc writes (<seed>_P<n>_<name>.sotn_tokens) next to it. Every byte written into a
+stage/boss file or DRA must be in the payload with the same value (except DRA's time-attack block, lists
+the BizHawk client read), and the payload must hold nothing else. The disc's files are found through its
+own directory, independently of Recomp.py.
 """
 import glob
-import io
 import json
 import os
 import sys
@@ -69,10 +71,12 @@ def main():
     import Utils
     with zipfile.ZipFile(zip_path) as z:
         md = Utils.restricted_loads(zlib.decompress(z.read(next(n for n in z.namelist() if n.endswith(".archipelago")))[1:]))
-        slots = [int(a) for a in sys.argv[2:]] or sorted(md["slot_data"])
-        patches = {n: z.read(n) for n in z.namelist() if n.endswith(".apsotn")}
+        slots = [int(a) for a in sys.argv[2:]] or sorted(s for s, d in md["slot_data"].items() if "recomp" in d)
+        patches = {n: z.read(n) for n in z.namelist() if n.endswith(".sotn_tokens")}
+    if not patches:
+        sys.exit("no .sotn_tokens files in the seed: generate it with SOTN_RECOMP_DEBUG_TOKENS=1")
 
-    zones_mod, _, _, _ = gen.load_world(os.path.join(ROOT, "apworld", "sotn"))
+    zones_mod, _, _, _ = gen.load_world(os.path.join(ROOT, "apworld", "sotn_recomp"))
     by_key = {v: k for k, v in zones_mod.ZONE.items()}
     spans = [(zn["pos"], zn["pos"] + -(-zn["len"] // DATA) * SECTOR, by_key[num])
              for num, zn in zones_mod.zones.items() if "pos" in zn and "len" in zn]
@@ -105,8 +109,7 @@ def main():
     for slot in slots:
         payload = md["slot_data"][slot].get("recomp")
         name = next(n for n in patches if f"_P{slot}_" in n)
-        with zipfile.ZipFile(io.BytesIO(patches[name])) as p:
-            tokens = decode_tokens(p.read("token_data.bin"))
+        tokens = decode_tokens(patches[name])
         expected = {}
         for off, data in tokens:
             for i, b in enumerate(data):

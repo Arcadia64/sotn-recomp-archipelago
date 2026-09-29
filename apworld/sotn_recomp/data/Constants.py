@@ -1,4 +1,6 @@
-CURRENT_VERSION = 817
+# Its own game name, so it can be installed next to fdelduque's world (for BizHawk) without the two
+# being mixed up. Item and location ids are the same as that world's, so its PopTracker pack still works.
+GAME_NAME = "Symphony of the Night (Recomp)"
 
 # This is applied to helmet, armor, cloak, and other ids that are sold in
 # the librarian's shop menu or are in an equipment slot

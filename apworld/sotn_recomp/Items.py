@@ -1,10 +1,11 @@
 from BaseClasses import ItemClassification, Item
+from .data.Constants import GAME_NAME
 
 tile_id_offset = 0X80
 
 
 class SotnItem(Item):
-    game: str = "Symphony of the Night"
+    game: str = GAME_NAME
 
 
 # Thanks M. for useful items

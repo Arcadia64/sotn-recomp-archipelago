@@ -31,8 +31,10 @@ DRA_LBA = 299
 DRA_SIZE = 1153136
 DRA_RAM = 0x800A0000
 
-# DRA's Time Attack labels, which write_seed fills with data only the BizHawk client reads. Rom.py
-# writes the same data again at DRA + SEED_COPY_OFFSET, which lands in SEL.BIN; that copy is skipped too.
+# DRA's Time Attack labels, which Rom.py (from the BizHawk world) fills with lists for its client:
+# relic copies, the Doppleganger 10 and Librarian items, enemysanity items. The mod works all of that
+# out from the seed's scouts. Rom.py writes the same data again at DRA + SEED_COPY_OFFSET, which lands
+# in SEL.BIN; that copy is skipped too.
 SEED_BLOCK = (0x800DFAEC - DRA_RAM, 0x800DFD44 - DRA_RAM)
 SEED_COPY_OFFSET = 0x4298798
 

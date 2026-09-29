@@ -1,117 +1,32 @@
-import json
 import struct
 import math
-import sys
 
-import logging
 from typing import TYPE_CHECKING, List
-from Utils import home_path, open_filename, messagebox
-from settings import get_settings
 from worlds.AutoWorld import World
-from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
+from worlds.Files import APTokenMixin, APTokenTypes
 from BaseClasses import Item, ItemClassification
-from .ErrorRecalc import ErrorRecalculator
 from .Items import tile_id_offset, relic_id_to_name, items, weapon1, shield, armor, helmet, cloak, accessory, id_to_item
 from .Locations import locations
 from .Enemies import enemy_dict, enemy_stats_list, enemy_atk_type_list, enemy_weak_type_list
-from .data.Constants import (RELIC_NAMES, SLOT, slots, equip_id_offset, equip_inv_id_offset, CURRENT_VERSION,
+from .data.Constants import (RELIC_NAMES, SLOT, slots, equip_id_offset, equip_inv_id_offset,
                              faerie_scroll_force_addresses, shop_item_data, start_room_data, music, music_by_area)
 from .data.io_items import io_items, tile_filter, type_filter, io_item_name
 from .data.Zones import zones, ZONE
 
-import hashlib
-import os
-import subprocess
-
 if TYPE_CHECKING:
     from . import SotnWorld
 
-USHASH = "acbb3a2e4a8f865f363dc06df147afa2"
-AUDIOHASH = "8f4b1df20c0173f7c2e6a30bd3109ac8"
-logger = logging.getLogger("Client")
+
+class SotnPatchData(APTokenMixin):
+    """Everything this world changes in the game, as writes into the US disc image (raw 2352-byte-sector
+    offsets), in AP's token format. Upstream wrote these into a BizHawk patch file; here they stay in
+    memory and Recomp.py turns them into the mod's per-file payload."""
+
+    def __init__(self) -> None:
+        self._tokens = []
 
 
-# Thanks lil David from AP discord for the info on APProcedurePatch
-class SotnProcedurePatch(APProcedurePatch, APTokenMixin):
-    game = "Symphony of the Night"
-    hash = USHASH
-    patch_file_ending = ".apsotn"
-    result_file_ending = ".cue"
-
-    procedure = [
-        ("apply_tokens", ["token_data.bin"]),
-    ]
-
-    @classmethod
-    def get_source_data(cls) -> bytes:
-        with open(get_settings().sotn_settings.rom_file, "rb") as infile:
-            return bytes(infile.read())
-
-    def patch(self, target: str) -> None:
-        error_message = ""
-        try:
-            options = json.loads(self.get_file("options.json"))
-            gen_version = options["version"]
-            if gen_version != CURRENT_VERSION:
-                error_message = f"Version mismatch. Gen: {gen_version} - Cur: {CURRENT_VERSION}"
-        except KeyError:
-            error_message = f"Could not find version on option.json! Generated version too old?"
-        except:
-            error_message = "Something went really wrong!!!"
-
-        if len(error_message):
-            messagebox("Error", error_message, error=True)
-            sys.exit()
-
-        file_name = target[:-4]
-        if os.path.exists(file_name + ".bin") and os.path.exists(file_name + ".cue"):
-            logger.info("Patched ROM + CUE already exist!")
-            audio_name = target[0:target.rfind('/') + 1]
-            audio_name += "Castlevania - Symphony of the Night (USA) (Track 2).bin"
-            if os.path.exists(audio_name):
-                logger.info("Track 2 already exist")
-            else:
-                logger.info("Copying track 2")
-                audio_rom = bytearray(get_base_rom_bytes(audio=True))
-                with open(audio_name, "wb") as stream:
-                    stream.write(audio_rom)
-            return
-
-        super().patch(target)
-
-        os.rename(target, file_name + ".bin")
-
-        audio_name = target[0:target.rfind('/') + 1]
-        audio_name += "Castlevania - Symphony of the Night (USA) (Track 2).bin"
-        if os.path.exists(audio_name):
-            logger.info("Track 2 already exist")
-        else:
-            logger.info("Copying track 2")
-            audio_rom = bytearray(get_base_rom_bytes(audio=True))
-            with open(audio_name, "wb") as stream:
-                stream.write(audio_rom)
-
-        track1_name = target[target.rfind('/') + 1:-4]
-
-        cue_file = f'FILE "{track1_name}.bin" BINARY\n  TRACK 01 MODE2/2352\n\tINDEX 01 00:00:00\n'
-        cue_file += f'FILE "Castlevania - Symphony of the Night (USA) (Track 2).bin" BINARY\n  TRACK 02 AUDIO\n'
-        cue_file += f'\tINDEX 00 00:00:00\n\tINDEX 01 00:02:00'
-
-        with open(file_name + ".cue", 'wb') as outfile:
-            outfile.write(bytes(cue_file, 'utf-8'))
-
-        # Apply Error Recalculation
-        error_recalculator = ErrorRecalculator(calculate_form_2_edc=False)
-        stats = error_recalculator.recalc(target_file=file_name + ".bin", base_file=get_settings().sotn_settings.rom_file)
-        print(f"{stats.identical_sectors} identical sectors out of {stats.total_sectors()}, {stats.recalc_sectors} sectors recalculated")
-        print(f"{stats.edc_blocks_computed} EDC blocks computed, {stats.ecc_blocks_generated} ECC blocks generated")
-
-
-class SotnPatchExtension(APPatchExtension):
-    game = "Symphony of the Night"
-
-
-def apply_acessibility_patches(patch: SotnProcedurePatch):
+def apply_acessibility_patches(patch: SotnPatchData):
     # Researched by MottZilla.
     # Patch Clock Room cutscene 0x03ca90
     patch.write_token(APTokenTypes.WRITE, 0x0aea9c, struct.pack("<B", 0x40))
@@ -250,7 +165,7 @@ def tile_value(item: dict, tile: dict) -> int:
     return item_id
 
 
-def write_entity(entity: dict, opts: dict, patch: SotnProcedurePatch) -> None:
+def write_entity(entity: dict, opts: dict, patch: SotnPatchData) -> None:
     for index, e in enumerate(entity["entities"]):
         zone = zones[entity["zones"][index >> 1]]
         if "x" in opts:
@@ -270,14 +185,14 @@ def write_entity(entity: dict, opts: dict, patch: SotnProcedurePatch) -> None:
             patch.write_token(APTokenTypes.WRITE, address, opts["state"].to_bytes(2, "little"))
 
 
-def write_tile_id(zones_list: list, index: int, item_id: int, patch: SotnProcedurePatch) -> None:
+def write_tile_id(zones_list: list, index: int, item_id: int, patch: SotnPatchData) -> None:
     for z in zones_list:
         zone = zones[z]
         addr = rom_offset(zone, zone["items"] + 0x02 * index)
         patch.write_token(APTokenTypes.WRITE, addr, item_id.to_bytes(2, "little"))
 
 
-def replace_holy_glasses_with_relic(instructions: list, relic: int, patch: SotnProcedurePatch):
+def replace_holy_glasses_with_relic(instructions: list, relic: int, patch: SotnPatchData):
     zone = zones[ZONE["CEN"]]
     # Erase Holy glasses
     patch.write_token(APTokenTypes.WRITE,
@@ -297,7 +212,7 @@ def replace_holy_glasses_with_relic(instructions: list, relic: int, patch: SotnP
         patch.write_token(APTokenTypes.WRITE, offset, relic.to_bytes(2, "little"))
 
 
-def replace_shop_relic_with_relic(jewel_address: int, relic_id: int, patch: SotnProcedurePatch):
+def replace_shop_relic_with_relic(jewel_address: int, relic_id: int, patch: SotnPatchData):
     relic_name_address = 0x047d5650
     relic_id_address = 0x047dbde0
     relic_id_offset = 0x64
@@ -331,7 +246,7 @@ def replace_shop_relic_with_relic(jewel_address: int, relic_id: int, patch: Sotn
         relic_name_address += 1
 
 
-def replace_shop_relic_with_item(item: dict, patch: SotnProcedurePatch):
+def replace_shop_relic_with_item(item: dict, patch: SotnPatchData):
     item_id = item["id"]
     zone = zones[ZONE["LIB"]]
     i_slots = item_slots(item)
@@ -507,7 +422,7 @@ def replace_shop_relic_with_item(item: dict, patch: SotnProcedurePatch):
     patch.write_token(APTokenTypes.WRITE, offset, (0x00000000).to_bytes(4, "little"))  # nop
 
 
-def replace_boss_relic_with_item(opts: dict, patch: SotnProcedurePatch) -> None:
+def replace_boss_relic_with_item(opts: dict, patch: SotnPatchData) -> None:
     relic = opts["relic"]
     boss = zones[relic["reward"]["zones"]]
     index = relic["index"]
@@ -590,7 +505,7 @@ def replace_boss_relic_with_item(opts: dict, patch: SotnProcedurePatch) -> None:
     offset += 4
 
 
-def replace_ring_of_vlad_with_item(opts: dict, patch: SotnProcedurePatch) -> None:
+def replace_ring_of_vlad_with_item(opts: dict, patch: SotnPatchData) -> None:
     zone = zones[ZONE["RNZ1"]]
     relic = opts["relic"]
     item = opts["item"]
@@ -683,7 +598,7 @@ def replace_ring_of_vlad_with_item(opts: dict, patch: SotnProcedurePatch) -> Non
     patch.write_token(APTokenTypes.WRITE, offset, (0x00000000).to_bytes(4, "little"))  # nop
 
 
-def replace_gold_ring_with_relic(relic_id: int, patch: SotnProcedurePatch) -> None:
+def replace_gold_ring_with_relic(relic_id: int, patch: SotnPatchData) -> None:
     zone = zones[ZONE["NO4"]]
     # Put relic in entity table
     gold_ring = locations["Underground Caverns Succubus Side - Succubus item"]
@@ -735,7 +650,7 @@ def replace_gold_ring_with_relic(relic_id: int, patch: SotnProcedurePatch) -> No
     patch.write_token(APTokenTypes.WRITE, offset, (0x00000000).to_bytes(4, "little"))  # nop
 
 
-def replace_trio_with_relic(relic_id: int, patch: SotnProcedurePatch) -> None:
+def replace_trio_with_relic(relic_id: int, patch: SotnPatchData) -> None:
     trio = locations["Reverse Colosseum - Trio item"]
     # Boss zone patches
     boss = zones[ZONE["RBO0"]]
@@ -757,7 +672,7 @@ def replace_trio_with_relic(relic_id: int, patch: SotnProcedurePatch) -> None:
         patch.write_token(APTokenTypes.WRITE, addr, relic_id.to_bytes(2, "little"))
 
 
-def replace_trio_relic_with_item(opts: dict, patch: SotnProcedurePatch) -> None:
+def replace_trio_relic_with_item(opts: dict, patch: SotnPatchData) -> None:
     replace_boss_relic_with_item(opts, patch)
 
     zone = zones[ZONE["RARE"]]
@@ -767,18 +682,10 @@ def replace_trio_relic_with_item(opts: dict, patch: SotnProcedurePatch) -> None:
         patch.write_token(APTokenTypes.WRITE, addr, (0x0010).to_bytes(2, "little"))
 
 
-def write_tokens(world: "SotnWorld", patch: SotnProcedurePatch):
+def write_tokens(world: "SotnWorld", patch: SotnPatchData):
     option_names: List[str] = [option_name for option_name in world.options_dataclass.type_hints if
                                option_name != "plando_items"]
     options_dict = world.options.as_dict(*option_names)
-
-    if 'W' in world.multiworld.seed_name:
-        seed_number = world.multiworld.seed_name[1:]
-    else:
-        seed_number = world.multiworld.seed_name
-    options_dict["seed"] = seed_number
-    options_dict["player"] = patch.player
-    options_dict["player_name"] = patch.player_name
     randomize_items = options_dict["randomize_items"]
 
     # Patch Maria dialog to prevent player stuck after Hippogryph
@@ -1369,16 +1276,6 @@ def write_tokens(world: "SotnWorld", patch: SotnProcedurePatch):
     #if options_dict["goal"] == 3 or options_dict["goal"] == 5:
     #    patch.write_token(APTokenTypes.WRITE, 0x04fcf7b4, (0x10000118).to_bytes(4, "little"))
 
-    sanity = 0
-    if options_dict["enemysanity"]:
-        sanity |= (1 << 0)
-    if options_dict["enemy_scroll"]:
-        sanity |= (1 << 1)
-    if options_dict["auto_heal"]:
-        sanity |= (1 << 6)
-    if options_dict["death_link"]:
-        sanity |= (1 << 7)
-
     enemy_mod = 0
     shop_price_min = -10
     shop_price_max = -10
@@ -1412,13 +1309,6 @@ def write_tokens(world: "SotnWorld", patch: SotnProcedurePatch):
         # Upstream passed options_dict["drop_mod"] here, which is 0 for easy difficulty with drop_mod
         # left at normal: every drop rate became 0 instead of the easy-difficulty drop boost.
         modify_drop(drop_mod, patch)
-
-    player_name = world.multiworld.get_player_name(world.player)
-    player_num = world.player
-
-    seed_num = options_dict["seed"]
-
-    write_seed(patch, seed_num, player_num, player_name, sanity)
 
     if options_dict["infinite_wing_smash"]:
         # Wing smash timer
@@ -1497,17 +1387,13 @@ def write_tokens(world: "SotnWorld", patch: SotnProcedurePatch):
     apply_acessibility_patches(patch)
     rando_func_master(0, patch)
 
-    options_dict["version"] = CURRENT_VERSION
-
-    patch.write_file("options.json", json.dumps(options_dict).encode("utf-8"))
-    patch.write_file("token_data.bin", patch.get_token_binary())
 
 
 def random_color(world: "SotnWorld") -> int:
     return 0x8000 | math.floor(world.random.random() * 0x10000)
 
 
-def cape_color(world: "SotnWorld", lining_address: int, outer_address: int, opts: dict, patch: SotnProcedurePatch):
+def cape_color(world: "SotnWorld", lining_address: int, outer_address: int, opts: dict, patch: SotnPatchData):
     if "liningColor1" in opts:
         lining_color_1 = opts["liningColor1"]
     else:
@@ -1534,7 +1420,7 @@ def cape_color(world: "SotnWorld", lining_address: int, outer_address: int, opts
     patch.write_token(APTokenTypes.WRITE, outer_address + 0x02, outer_color_2.to_bytes(2, "little"))
 
 
-def randomize_josephs_cloak(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_josephs_cloak(world: "SotnWorld", patch: SotnPatchData):
     colors = [
         math.floor(world.random.random() * 32),
         math.floor(world.random.random() * 32),
@@ -1563,7 +1449,7 @@ def randomize_josephs_cloak(world: "SotnWorld", patch: SotnProcedurePatch):
     patch.write_token(APTokenTypes.WRITE, address, (0x0803924f).to_bytes(4, "little"))
 
 
-def randomize_cape_colors(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_cape_colors(world: "SotnWorld", patch: SotnPatchData):
     # Cloth Cape
     cape_color(world, 0x0afb84, 0x0afb88, {}, patch)
     # Reverse Cloak & Inverted Cloak
@@ -1595,7 +1481,7 @@ def randomize_cape_colors(world: "SotnWorld", patch: SotnProcedurePatch):
     cape_color(world, 0x6894054, 0x6894058, {}, patch)
 
 
-def randomize_dracula_cape(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_dracula_cape(world: "SotnWorld", patch: SotnPatchData):
     dracula_cape_pallete_count = 8
     color_dc = math.floor(world.random.random() * dracula_cape_pallete_count)
     offset = 0x535d4ea
@@ -1616,7 +1502,7 @@ def randomize_dracula_cape(world: "SotnWorld", patch: SotnProcedurePatch):
         offset += 2
 
 
-def randomize_hydro_storm_color(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_hydro_storm_color(world: "SotnWorld", patch: SotnPatchData):
     color_1 = math.floor(world.random.random() * 0x100)
     color_2 = math.floor(world.random.random() * 0x100)
     color_3 = math.floor(world.random.random() * 0x100)
@@ -1629,7 +1515,7 @@ def randomize_hydro_storm_color(world: "SotnWorld", patch: SotnProcedurePatch):
     patch.write_token(APTokenTypes.WRITE, 0x3A19568, struct.pack("<B", color_5))
 
 
-def randomize_grav_boot_colors(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_grav_boot_colors(world: "SotnWorld", patch: SotnPatchData):
     # Base game has 2 bytes that it can set for a0 and a1
     # set at 0x8011e1ac and 0x8011e1b0
     color_1 = math.floor(world.random.random() * 0x100)
@@ -1651,7 +1537,7 @@ def randomize_grav_boot_colors(world: "SotnWorld", patch: SotnProcedurePatch):
 # By default, this is palette #0x8102 (see EntityWingSmashTrail in decomp)
 # Keep the 0x8100, but change the lower byte to pick a random palette
 # This write is to 8011e438 at runtime
-def randomize_wing_smash_color(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_wing_smash_color(world: "SotnWorld", patch: SotnPatchData):
     # Index 0 in most cluts is transparent. In some it is not. In these non-transparent cluts, we won't
     # get a recolored wing smash outline and will instead get an ugly rectangle, since all the pixels
     # that are supposed to be transparent won't be. These CLUTS were identified by python script as having
@@ -1676,7 +1562,7 @@ def randomize_wing_smash_color(world: "SotnWorld", patch: SotnProcedurePatch):
         patch.write_token(APTokenTypes.WRITE, 0xef990, new_outline.to_bytes(2, "little"))
 
 
-def randomize_richter_color(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_richter_color(world: "SotnWorld", patch: SotnPatchData):
     richter_palette_count = 5
     color_r = math.floor(world.random.random() * richter_palette_count)
     richter_offset = [  # Offsets for the pause UI during Prologue
@@ -1756,7 +1642,7 @@ def randomize_richter_color(world: "SotnWorld", patch: SotnProcedurePatch):
     patch.write_token(APTokenTypes.WRITE, offset, palettes_richter[color_r][7].to_bytes(2, "little"))
 
 
-def randomize_maria_color(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_maria_color(world: "SotnWorld", patch: SotnPatchData):
     maria_palette_count = 6
     color_m = math.floor(world.random.random() * maria_palette_count)
     palettes_maria = [
@@ -1805,7 +1691,7 @@ def randomize_maria_color(world: "SotnWorld", patch: SotnProcedurePatch):
         offset += 2
 
 
-def single_hit_gears(patch: SotnProcedurePatch):
+def single_hit_gears(patch: SotnPatchData):
     # Clock tower puzzle 180fd0 = 0f Change 1a8a64: and r3, r5 to 3403000f mov r3, 0x0f @ROM 0x055a0f4c
     # Reverse clock tower puzzle 180f6c = 0f Change 1a8350: and r2, r3 to 3402000f mov r2, 0x0f @ ROM 0x059e928
     # patch.write_token(APTokenTypes.WRITE, 0x055a0f4c, (0x3403000f).to_bytes(4, "little"))
@@ -1840,7 +1726,7 @@ def single_hit_gears(patch: SotnProcedurePatch):
     patch.write_token(APTokenTypes.WRITE, offset, (0x00000000).to_bytes(4, "little"))
 
 
-def randomize_music(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_music(world: "SotnWorld", patch: SotnPatchData):
     music_list = list(music_by_area.values())
     song_src = list(music.values())
 
@@ -1856,7 +1742,7 @@ def randomize_music(world: "SotnWorld", patch: SotnProcedurePatch):
             patch.write_token(APTokenTypes.WRITE, addr, struct.pack("<B", rand_song))
 
 
-def rlib_card(patch: SotnProcedurePatch):
+def rlib_card(patch: SotnPatchData):
     # Down-arrow at the end of the Library card's name (DRA 0x800DD20C, vanilla FF 00), as sotn.io's
     # applyRLBCPatches writes it: shows the card has the reverse-library function, and it is the marker
     # SymphonyRecomp checks to switch its own reverse Library card on.
@@ -1933,7 +1819,7 @@ def rlib_card(patch: SotnProcedurePatch):
     offset += 4
 
 
-def rando_func_master(opt_write: int, patch: SotnProcedurePatch) -> None:
+def rando_func_master(opt_write: int, patch: SotnPatchData) -> None:
     offset = 0xF96D8
     patch.write_token(APTokenTypes.WRITE, offset, (0x0c038ba6).to_bytes(4, "little"))
     offset += 4
@@ -2097,7 +1983,7 @@ def rando_func_master(opt_write: int, patch: SotnProcedurePatch) -> None:
     offset += 4
 
 
-def modify_drop(drop_mod: int, patch: SotnProcedurePatch):
+def modify_drop(drop_mod: int, patch: SotnPatchData):
     if drop_mod == 3:
         nop_line = 0x00000000
         always_drop = 0x1800000D
@@ -2287,7 +2173,7 @@ def modify_drop(drop_mod: int, patch: SotnProcedurePatch):
                     pass
 
 
-def start_room_rando(castle_flag: int, world: "SotnWorld", patch: SotnProcedurePatch):
+def start_room_rando(castle_flag: int, world: "SotnWorld", patch: SotnPatchData):
     room_keys = list(start_room_data.keys())
     rand_room_key = world.random.choice(room_keys)
     rand_room = start_room_data[rand_room_key]
@@ -2469,7 +2355,7 @@ def start_room_rando(castle_flag: int, world: "SotnWorld", patch: SotnProcedureP
 
 
 def randomize_shop(min_value: int, max_value: int, randomize_items: int, world: "SotnWorld",
-                   patch: SotnProcedurePatch) -> None:
+                   patch: SotnPatchData) -> None:
     new_min = 50
     new_max = 150
     new_shop_prices = []
@@ -2530,7 +2416,7 @@ def randomize_shop(min_value: int, max_value: int, randomize_items: int, world: 
             patch.write_token(APTokenTypes.WRITE, item_address - 2, (new_item + offset).to_bytes(2, "little"))
 
 
-def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch: SotnProcedurePatch):
+def enemy_stat_rando(new_mod: float, enemy_stat: bool, world: "SotnWorld", patch: SotnPatchData):
     for enemy in enemy_stats_list:
         stat_hp = enemy["hpValue"]
         stat_atk = enemy["atkValue"]
@@ -2828,7 +2714,7 @@ def enemy_num_stat_rand(world: "SotnWorld", original_stat: int) -> int:
 
 
 # Thanks eldri7ch
-def no_prologue(patch: SotnProcedurePatch):
+def no_prologue(patch: SotnPatchData):
     # Patch from Chaos-Lite / MottZilla
     patch.write_token(APTokenTypes.WRITE, 0x04392b1c, struct.pack("<B", 0x41))
 
@@ -2872,7 +2758,7 @@ def no_prologue(patch: SotnProcedurePatch):
 
 
 # Researched by MottZilla & eldri7ch. Function by eldri7ch
-def map_color(map_col: int, patch: SotnProcedurePatch):
+def map_color(map_col: int, patch: SotnPatchData):
     address_al = 0x03874848  # define address for Alucard maps
     address_ri = 0x038C0508  # define address for Richter maps
     address_al_bord = 0x03874864  # define address for Alucard maps borders
@@ -2916,7 +2802,7 @@ def map_color(map_col: int, patch: SotnProcedurePatch):
 
 
 # Alucard Palette Randomizer - CRAZY4BLADES, palettes by eldri7ch
-def alucard_palette(al_col_p: int, patch: SotnProcedurePatch):
+def alucard_palette(al_col_p: int, patch: SotnPatchData):
     color_alucard_bright = 1
     palettes_alucard =\
         [
@@ -2943,7 +2829,7 @@ def alucard_palette(al_col_p: int, patch: SotnProcedurePatch):
     patch.write_token(APTokenTypes.WRITE, offset, palettes_alucard[al_col_p][index].to_bytes(2, "little"))
 
 
-def alucard_liner(al_col_l: int, patch: SotnProcedurePatch):
+def alucard_liner(al_col_l: int, patch: SotnPatchData):
     palettes_alucard_liner = [
         [0x84ab, 0x8d2f, 0x91d6, 0x929b],  # Gold Trim (Default)
         [0x8465, 0x88a8, 0x88ec, 0x9151],  # Bronze Trim
@@ -2958,7 +2844,7 @@ def alucard_liner(al_col_l: int, patch: SotnProcedurePatch):
         offset += 2
 
 
-def magic_max(patch: SotnProcedurePatch):
+def magic_max(patch: SotnPatchData):
     offset = 0x00117b50	 # Set Starting Offset
     # Patch MP Vessels function Heart Vessels - code by MottZilla & graphics drawn by eldri7ch
     patch.write_token(APTokenTypes.WRITE, offset, (0x3c028004).to_bytes(4, "little"))
@@ -3246,23 +3132,23 @@ def magic_max(patch: SotnProcedurePatch):
     offset += 4
 
 
-def anti_freeze(patch: SotnProcedurePatch):
+def anti_freeze(patch: SotnPatchData):
     # Patch screen freeze value - eldri7ch
     patch.write_token(APTokenTypes.WRITE, 0x00140a2c, struct.pack("<B", 0x00))
 
 
-def my_purse(patch: SotnProcedurePatch):
+def my_purse(patch: SotnPatchData):
     # Patch Death goes home - eldri7ch
     patch.write_token(APTokenTypes.WRITE, 0x04baea08, (0x18000006).to_bytes(4, "little"))
 
 
-def fast_warp(patch: SotnProcedurePatch):
+def fast_warp(patch: SotnPatchData):
     # Patch warp animation speed - eldri7ch
     patch.write_token(APTokenTypes.WRITE, 0x0588be90, struct.pack("<B", 0x02))  # Patch from Aperture / MottZilla
     patch.write_token(APTokenTypes.WRITE, 0x05a78fe4, struct.pack("<B", 0x02))
 
 
-def unlocked_patches(patch: SotnProcedurePatch):
+def unlocked_patches(patch: SotnPatchData):
     tile_remove = 0x00000000  # set tile overwrites to remove them
     memory_skip = 0x34020001  # set register 2 to 01 instead of whatever RAM said
     nop_value = 0x00000000  # nop instruction follow-up
@@ -3291,7 +3177,7 @@ def unlocked_patches(patch: SotnProcedurePatch):
         patch.write_token(APTokenTypes.WRITE, offset, nop_value.to_bytes(4, "little"))
 
 
-def surprise_patches(patch: SotnProcedurePatch):
+def surprise_patches(patch: SotnPatchData):
     surprise_pal = 0x01020111  # set tile overwrites to remove them
     # Patch the sprites for each relic - eldri7ch; code by MottZilla
     offset = 0x000b5550  # start with Soul of Bat - eldri7ch
@@ -3308,7 +3194,7 @@ def surprise_patches(patch: SotnProcedurePatch):
 PROGRESSION_DROP_NAMES = ["Spike Breaker", "Holy glasses", "Silver Ring", "Gold Ring"]
 
 
-def randomize_drop(option: int, world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_drop(option: int, world: "SotnWorld", patch: SotnPatchData):
     items = tile_filter(io_items, ["enemy"])
     dropped_items = []
     rng_drop = []
@@ -3396,7 +3282,7 @@ def randomize_drop(option: int, world: "SotnWorld", patch: SotnProcedurePatch):
                 patch.write_token(APTokenTypes.WRITE, address, new_tile.to_bytes(2, "little"))
 
 
-def randomize_candles(option: int, world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_candles(option: int, world: "SotnWorld", patch: SotnPatchData):
     items = tile_filter(io_items, ["candle"])
     dropped_items = []
     rng_drop = []
@@ -3475,131 +3361,6 @@ def randomize_candles(option: int, world: "SotnWorld", patch: SotnProcedurePatch
                 patch.write_token(APTokenTypes.WRITE, address, new_tile.to_bytes(2, "little"))
 
 
-def get_base_rom_bytes(audio: bool = False) -> bytes:
-    if not audio:
-        file_name = get_settings().sotn_settings.rom_file
-        with open(file_name, "rb") as infile:
-            base_rom_bytes = bytes(infile.read())
-
-        basemd5 = hashlib.md5()
-        basemd5.update(base_rom_bytes)
-        if USHASH != basemd5.hexdigest():
-            raise Exception('Supplied Track 1 Base Rom does not match known MD5 for SLU067 release. '
-                            'Get the correct game and version, then dump it')
-    else:
-        file_name = get_settings().sotn_settings.audio_file
-        with open(file_name, "rb") as infile:
-            base_rom_bytes = bytes(infile.read())
-
-        basemd5 = hashlib.md5()
-        basemd5.update(base_rom_bytes)
-        if AUDIOHASH != basemd5.hexdigest():
-            raise Exception('Supplied Track 2 Audio Rom does not match known MD5 for SLU067 release. '
-                            'Get the correct game and version, then dump it')
-
-    return base_rom_bytes
-
-
-def write_seed(patch: SotnProcedurePatch, seed, player_number, player_name, sanity_options) -> None:
-    byte = 0
-    start_address = 0x0438d47c
-    duplicate_offset = 0x4298798
-    seed_text = []
-
-    # Seed number occupies 10 bytes total line have 22 + 0xFF 0x00 at end
-    # There are 2 unused bytes from bonus luck
-    for i, num in enumerate(seed):
-        if i % 2 != 0:
-            byte = (byte | int(num))
-            seed_text.append(byte)
-            byte = 0
-        else:
-            byte = (int(num) << 4)
-
-    if player_number < 255:
-        seed_text.append(0)
-        seed_text.append(player_number)
-    else:
-        b_array = bytearray(player_number.to_bytes(2, "big"))
-        seed_text.append(b_array[0])
-        seed_text.append(b_array[1])
-
-    seed_text.append(sanity_options)
-
-    # Still space on 1st maria meeting text
-
-    options_len = len(seed_text)
-    for _ in range(options_len, 22):
-        seed_text.append(0x00)
-
-    seed_text.append(0xFF)
-    seed_text.append(0x00)
-
-    for b in seed_text:
-        patch.write_token(APTokenTypes.WRITE, start_address, struct.pack("<B", b))
-        patch.write_token(APTokenTypes.WRITE, start_address - duplicate_offset, struct.pack("<B", b))
-        start_address += 1
-
-    utf_name = player_name.encode("utf8")
-    sizes = [30, 30, 20]
-    first_line = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00]
-    second_line = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00]
-    third_line = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                  0x00, 0x00, 0xFF, 0x00]
-    # Name MAX SIZE is 16 chars = 64 bytes
-    char_count = 0
-    line_count = 0
-    for c in utf_name:
-        if char_count == sizes[line_count]:
-            line_count += 1
-            char_count = 0
-
-        if line_count == 0:
-            first_line[char_count] = c
-        elif line_count == 1:
-            second_line[char_count] = c
-        elif line_count == 2:
-            third_line[char_count] = c
-
-        char_count += 1
-
-    # Write a CR+LF 0d 0a
-    if char_count == sizes[line_count]:
-        line_count += 1
-        char_count = 0
-
-    if line_count == 0:
-        first_line[char_count] = 0x0d
-        first_line[char_count + 1] = 0x0a
-    elif line_count == 1:
-        second_line[char_count] = 0x0d
-        second_line[char_count + 1] = 0x0a
-    elif line_count == 2:
-        third_line[char_count] = 0x0d
-        third_line[char_count + 1] = 0x0a
-
-    # Write to file
-    # Player name on meeting with librarian, get holy glasses, meeting with death
-    start_address = 0x438d494
-    for b in first_line:
-        patch.write_token(APTokenTypes.WRITE, start_address, struct.pack("<B", b))
-        patch.write_token(APTokenTypes.WRITE, start_address - duplicate_offset, struct.pack("<B", b))
-        start_address += 1
-
-    start_address = 0x438d4b4
-    for b in second_line:
-        patch.write_token(APTokenTypes.WRITE, start_address, struct.pack("<B", b))
-        patch.write_token(APTokenTypes.WRITE, start_address - duplicate_offset, struct.pack("<B", b))
-        start_address += 1
-
-    start_address = 0x438d4d4
-    for b in third_line:
-        patch.write_token(APTokenTypes.WRITE, start_address, struct.pack("<B", b))
-        patch.write_token(APTokenTypes.WRITE, start_address - duplicate_offset, struct.pack("<B", b))
-        start_address += 1
-
 
 def items_as_bytes(item1: int, item2: int) -> tuple:
     value1 = item1 >> 4
@@ -3620,7 +3381,7 @@ def bytes_as_items(byte1: int, byte2: int, byte3: int) -> tuple:
     return item1, item2
 
 
-def randomize_starting_equipment(world: "SotnWorld", patch: SotnProcedurePatch):
+def randomize_starting_equipment(world: "SotnWorld", patch: SotnPatchData):
     rng_weapon = world.random.choice(list(weapon1.items()))
     rng_shield = world.random.choice(list(shield.items()))
     rng_armor = world.random.choice(list(armor.items()))

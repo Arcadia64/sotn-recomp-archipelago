@@ -2,7 +2,7 @@
   dist/archipelago.zip  - the SymphonyRecomp mod. Players drop the zip as-is into the recomp's mods
                           folder (the mod loader reads mod.json, mod-icon.png and every *.cs from a zip).
                           Laid out like the recomp's bundled mods: mod.json, mod-icon.png, source/*.cs.
-  dist/sotn.apworld     - the AP world, for whoever generates the multiworld.
+  dist/sotn_recomp.apworld - the AP world ("Symphony of the Night (Recomp)"), for whoever generates.
 
 Usage: py -3.12 tools/package.py
 """
