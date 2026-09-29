@@ -63,7 +63,7 @@ their title bar onto it):
   shown or hidden, a table of your hints, and a line to chat or send commands (`!hint`, `!release`...). The
   game ignores the keyboard while you type there.
 
-**Show window options** in the same menu, turned off, hides the checkboxes, filters and sliders, so the windows
+**Show window options** in the same menu, turned off, hides the checkboxes, filters, sliders and the map's counts, so the windows
 show only their content (cleaner on stream).
 
 ## For developers
