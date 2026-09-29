@@ -54,7 +54,8 @@ their title bar onto it):
 - **Connection**: the server, the connection status, and a colour-coded log.
 - **Map**: your seed's locations on the castle map in the seed's map colours: green where you can go now in
   logic, red not yet, grey checked, with your position and the location names (and, if you like, what's there)
-  on hover. The rest of the castle can be shown faintly or left dark until you explore it.
+  on hover. Rooms you haven't explored (and their locations) can be shown faintly, or stay hidden until you
+  explore them.
 - **Items**: your relics, relics of Vlad, key items, familiar cards and vessels, with where each came from (or
   where a hint says it is), and what you still need for Dracula.
 - **Messages**: Archipelago's text client: chat, items found and sent, hints and server messages, each kind

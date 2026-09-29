@@ -35,11 +35,11 @@ public sealed class MapPanel : IPanel
     static readonly string[] ViewNames = ["Where I am", "Castle", "Inverted castle"];
 
     const string ViewKey = "Archipelago.Map.View", CheckedKey = "Archipelago.Map.ShowChecked", ItemsKey = "Archipelago.Map.ShowItems";
-    const string WholeCastleKey = "Archipelago.Map.WholeCastle";
+    const string UnexploredKey = "Archipelago.Map.WholeCastle";
     View _view;
     bool _showChecked;
     bool _showItems;
-    bool _wholeCastle;
+    bool _showUnexplored;
 
     uint _castleTexture, _invertedTexture;
     bool _texturesTried;
@@ -54,7 +54,7 @@ public sealed class MapPanel : IPanel
         _view = (View)Math.Clamp(settings.GetInt(ViewKey, 0), 0, 2);
         _showChecked = settings.GetBool(CheckedKey, true);
         _showItems = settings.GetBool(ItemsKey, false);
-        _wholeCastle = settings.GetBool(WholeCastleKey, true);
+        _showUnexplored = settings.GetBool(UnexploredKey, true);
     }
 
     public void Draw()
@@ -93,8 +93,8 @@ public sealed class MapPanel : IPanel
         bool changed = ImGui.Combo("##view", ref view, ViewNames, ViewNames.Length);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Which castle to show: the one you're in, or either.");
         ImGui.SameLine();
-        changed |= ImGui.Checkbox("Whole castle", ref _wholeCastle);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Also draw the rooms you haven't explored yet, faintly. Off: only the rooms you've explored, as on the pause map.");
+        changed |= ImGui.Checkbox("Show unexplored rooms", ref _showUnexplored);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("On: the rooms you haven't explored yet are drawn faintly, with their locations. Off: only the rooms you've explored and their locations, as on the pause map.");
         ImGui.SameLine();
         changed |= ImGui.Checkbox("Show checked", ref _showChecked);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Also show locations you've already checked (grey).");
@@ -107,7 +107,7 @@ public sealed class MapPanel : IPanel
         settings.SetInt(ViewKey, view);
         settings.SetBool(CheckedKey, _showChecked);
         settings.SetBool(ItemsKey, _showItems);
-        settings.SetBool(WholeCastleKey, _wholeCastle);
+        settings.SetBool(UnexploredKey, _showUnexplored);
         RecompOne.Runtime.Runtime.SaveView();
     }
 
@@ -177,14 +177,15 @@ public sealed class MapPanel : IPanel
         draw.AddRectFilled(origin, origin + size, Background);
         draw.PushClipRect(origin, origin + size, true);
 
-        // Explored rooms filled, their walls bright; the rest of the castle's walls faint (Whole castle) or not
-        // drawn, as on the pause map.
+        // Explored rooms filled, their walls bright; the rest of the castle's walls faint (Show unexplored rooms)
+        // or not drawn, as on the pause map.
         var explored = Explored(inverted);
+        var exploredCells = explored.ToHashSet();
         foreach (var (x, y) in explored) draw.AddRectFilled(Corner(x, y), Corner(x, y) + new Vector2(cell, cell), fill);
         uint texture = inverted ? _invertedTexture : _castleTexture;
         if (texture != 0)
         {
-            if (_wholeCastle) draw.AddImage((nint)texture, origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
+            if (_showUnexplored) draw.AddImage((nint)texture, origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
             foreach (var (x, y) in explored)
             {
                 var uv0 = new Vector2(x * CellPixels / ImageWidth, ((y - shift) * CellPixels - TopCut) / ImageHeight);
@@ -215,6 +216,7 @@ public sealed class MapPanel : IPanel
         foreach (var ((spotInverted, x, y), ids) in _spots)
         {
             if (spotInverted != inverted) continue;
+            if (!_showUnexplored && !exploredCells.Contains((x, y))) continue; // revealed with its room
             var open = ids.Where(ApClient.IsMissing).ToList();
             if (open.Count == 0 && !_showChecked) continue;
             uint colour = open.Count == 0 ? Checked
