@@ -51,14 +51,15 @@ The new seed lands in `ref\archipelago\output\`. Stop the server (`/exit`) and s
 
 ## After changing mod code
 
-Copy the mod into the game's mods folder (from the project folder):
+Copy the mod into the game's mods folder, laid out like the recomp's bundled mods (`mod.json` and
+`mod-icon.png` at the top, the code in `source\`). From the project folder, in Git Bash:
 
-```powershell
-Copy-Item mod\*.cs, mod\mod.json ref\SymphonyRecomp\mods\archipelago\ -Force
+```bash
+tools/deploy-mod.sh
 ```
 
 Then in the game: **Mods** -> the **Archipelago** entry's menu -> **Reload**, or restart the game.
-(`tools/deploy-mod.sh` does the same copy and also removes files that were deleted from `mod\`.)
+For another copy of the recomp (a release download, say), pass its folder: `tools/deploy-mod.sh <folder>`.
 
 ## Checks that don't need the game
 

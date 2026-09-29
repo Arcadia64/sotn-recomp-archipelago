@@ -9,12 +9,13 @@ Work in progress. See [PLAN.md](PLAN.md) for what's done and what's next.
 
 ## What you need
 
-- SymphonyRecomp (tested with 0.5b) set up with your US disc, as its README describes.
+- SymphonyRecomp v0.5.1b or newer, set up with your US disc as its README describes.
 - `archipelago.zip` (the mod) and `sotn.apworld` (the Archipelago world) from this project's releases.
 
 ## Setting up
 
-1. Put `archipelago.zip` in SymphonyRecomp's `mods` folder, as it is (don't unzip it).
+1. Put `archipelago.zip` in SymphonyRecomp's `mods` folder. Either leave it zipped or unzip it into its own folder
+   (`mods/archipelago/` with `mod.json` in it); the game reads both.
 2. Start the game. In the menu bar (F1 shows it): **Mods** -> tick **Archipelago**. It stays enabled.
 
 ## Generating a seed

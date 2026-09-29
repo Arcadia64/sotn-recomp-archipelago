@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# Copy the mod sources into the recomp's mods folder so the game's file watcher
-# sees the change and rebuilds the mod. Usage: tools/deploy-mod.sh [recomp dir]
+# Copy the mod into the recomp's mods folder so the game's file watcher sees the change and
+# rebuilds the mod. Same layout as the recomp's bundled mods and our release zip: mod.json and
+# mod-icon.png at the top, the code in source/. Usage: tools/deploy-mod.sh [recomp dir]
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 recomp="${1:-$root/ref/SymphonyRecomp}"
 dest="$recomp/mods/archipelago"
-mkdir -p "$dest"
-# Remove files that no longer exist in the source, then copy the current set.
-for f in "$dest"/*.cs "$dest"/mod.json "$dest"/mod-icon.png; do
+mkdir -p "$dest/source"
+# Sources from the old flat layout, and ones deleted from mod/.
+rm -f "$dest"/*.cs
+for f in "$dest"/source/*.cs; do
   [ -e "$f" ] || continue
   [ -e "$root/mod/$(basename "$f")" ] || rm -f "$f"
 done
-cp -f "$root"/mod/*.cs "$root"/mod/mod.json "$dest"/
+cp -f "$root"/mod/*.cs "$dest"/source/
+cp -f "$root"/mod/mod.json "$root"/LICENSE "$dest"/
 [ -e "$root/mod/mod-icon.png" ] && cp -f "$root/mod/mod-icon.png" "$dest"/
-echo "deployed $(ls "$dest"/*.cs | wc -l) source file(s) to $dest"
+echo "deployed $(ls "$dest"/source/*.cs | wc -l) source file(s) to $dest"

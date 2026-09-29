@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Host.Window;
 using RecompOne.Runtime.Modding;
@@ -23,7 +25,7 @@ public sealed class ArchipelagoMod : IMod
         Log.Info("loading");
         Localization.Merge(Strings);
         PanelManager.Register(_panel);
-        MenuRegistry.BarItem(MenuKey, TogglePanel).After("menu.randomizer");
+        AddBarItem(MenuKey, TogglePanel);
         Event.AddListener<VSyncEvent>(OnVSync);
     }
 
@@ -32,13 +34,39 @@ public sealed class ArchipelagoMod : IMod
         ApClient.Disconnect();
         Event.RemoveListener<VSyncEvent>(OnVSync);
         MenuRegistry.Remove(MenuKey);
-        PanelManager.Unregister(_panel);
+        RemovePanel(_panel);
         Log.Info("unloaded");
     }
 
     public void DrawSettings() => _panel.DrawStatus();
 
     void TogglePanel() => _panel.IsOpen = !_panel.IsOpen;
+
+    // The menu and panel API differs between recomp versions, so call whichever this build has.
+    // v0.5.1b: BarItem(key, onClick, order) places items by order (Randomizer is 200) and returns
+    // nothing, and there's no PanelManager.Unregister. Later builds: BarItem(key, onClick) returns a
+    // MenuBuilder with After(key), and Unregister exists.
+    const int RandomizerOrder = 200;
+
+    static void AddBarItem(string key, Action onClick)
+    {
+        var registry = typeof(MenuRegistry);
+        var byOrder = registry.GetMethod("BarItem", [typeof(string), typeof(Action), typeof(int)]);
+        if (byOrder != null)
+        {
+            byOrder.Invoke(null, [key, onClick, RandomizerOrder]); // same order, added later: just after it
+            return;
+        }
+        var builder = registry.GetMethod("BarItem", [typeof(string), typeof(Action)])!.Invoke(null, [key, onClick]);
+        builder?.GetType().GetMethod("After", [typeof(string)])?.Invoke(builder, ["menu.randomizer"]);
+    }
+
+    static void RemovePanel(IPanel panel)
+    {
+        var unregister = typeof(PanelManager).GetMethod("Unregister", [typeof(IPanel)]);
+        if (unregister != null) unregister.Invoke(null, [panel]);
+        else if (PanelManager.Panels is List<IPanel> panels) panels.Remove(panel);
+    }
 
     static void OnVSync(VSyncEvent e)
     {
