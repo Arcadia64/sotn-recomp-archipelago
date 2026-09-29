@@ -35,11 +35,12 @@ public sealed class MapPanel : IPanel
     static readonly string[] ViewNames = ["Where I am", "Castle", "Inverted castle"];
 
     const string ViewKey = "Archipelago.Map.View", CheckedKey = "Archipelago.Map.ShowChecked", ItemsKey = "Archipelago.Map.ShowItems";
-    const string UnexploredKey = "Archipelago.Map.WholeCastle";
+    const string UnexploredKey = "Archipelago.Map.WholeCastle", CountsKey = "Archipelago.Map.ShowCounts";
     View _view;
     bool _showChecked;
     bool _showItems;
     bool _showUnexplored;
+    bool _showCounts;
 
     uint _castleTexture, _invertedTexture;
     bool _texturesTried;
@@ -55,6 +56,7 @@ public sealed class MapPanel : IPanel
         _showChecked = settings.GetBool(CheckedKey, true);
         _showItems = settings.GetBool(ItemsKey, false);
         _showUnexplored = settings.GetBool(UnexploredKey, true);
+        _showCounts = settings.GetBool(CountsKey, true);
     }
 
     public void Draw()
@@ -75,11 +77,8 @@ public sealed class MapPanel : IPanel
             RefreshSpots();
             var you = WhereYouAre();
             bool inverted = _view switch { View.Castle => false, View.Inverted => true, _ => you?.Inverted ?? false };
-            if (UiOptions.Show)
-            {
-                DrawControls();
-                DrawSummary();
-            }
+            if (UiOptions.Show) DrawControls();
+            if (_showCounts) DrawSummary();
             DrawMap(inverted, you);
         }
 
@@ -104,6 +103,9 @@ public sealed class MapPanel : IPanel
         ImGui.SameLine();
         changed |= ImGui.Checkbox("Show what's there", ref _showItems);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Spoilers: when you hover a location, say which item is there and whose it is.");
+        ImGui.SameLine();
+        changed |= ImGui.Checkbox("Show counts", ref _showCounts);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Show how many locations you've checked and how many you can reach now, above the map.");
         if (!changed) return;
         _view = (View)view;
         var settings = RecompOne.Runtime.Runtime.View;
@@ -111,6 +113,7 @@ public sealed class MapPanel : IPanel
         settings.SetBool(CheckedKey, _showChecked);
         settings.SetBool(ItemsKey, _showItems);
         settings.SetBool(UnexploredKey, _showUnexplored);
+        settings.SetBool(CountsKey, _showCounts);
         RecompOne.Runtime.Runtime.SaveView();
     }
 
@@ -136,9 +139,13 @@ public sealed class MapPanel : IPanel
             ImGui.Text($"{inLogic} of the {left} left reachable now" + (enemies > 0 ? $"; enemies: {enemiesInLogic} of {enemies}" : ""));
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled("(?)");
-        if (ImGui.IsItemHovered())
+        // The colours explained, with the other window options.
+        if (UiOptions.Show)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+        }
+        if (UiOptions.Show && ImGui.IsItemHovered())
         {
             ImGui.BeginTooltip();
             Legend(logic ? InLogic : NoLogic, logic ? "Reachable now" : "Not checked");
