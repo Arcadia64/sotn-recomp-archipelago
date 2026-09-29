@@ -21,6 +21,8 @@ static class ItemGiver
     const uint HpMaxAddr = 0x80097BA4;
     const uint HeartsAddr = 0x80097BA8;
     const uint HeartsMaxAddr = 0x80097BAC;
+    const uint MpAddr = 0x80097BB0, MpMaxAddr = 0x80097BB4;
+    const uint MagicVesselPatchAddr = 0x800FE0F4, MagicVesselPatchWord = 0x10400003; // magic_vessels (Rom.py)
     const uint RelicBase = 0x80097964;
     const long FirstCard = 318, LastCard = 322;
     const long FirstBodyItem = 169;
@@ -128,6 +130,14 @@ static class ItemGiver
         {
             m.WriteU32(HeartsMaxAddr, m.ReadU32(HeartsMaxAddr) + 5);
             m.WriteU32(HeartsAddr, m.ReadU32(HeartsAddr) + 5);
+            // magic_vessels: as for one picked up, where the recomp adds this in the vessel code
+            // (RandoPatch.MagicMaxUp_Pre, when the patched word is in RAM): max MP +3, MP refilled.
+            if (m.ReadU32(MagicVesselPatchAddr) == MagicVesselPatchWord)
+            {
+                uint mp = m.ReadU32(MpMaxAddr) + 3;
+                m.WriteU32(MpMaxAddr, mp);
+                m.WriteU32(MpAddr, mp);
+            }
             return;
         }
         if (id == ItemData.LifeVessel)
