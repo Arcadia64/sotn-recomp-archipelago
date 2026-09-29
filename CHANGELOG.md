@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
 
 - Docked windows stay where you put them after restarting the game
 - Right-click an item you don't have (Items) or a location (Map) to ask for a hint
