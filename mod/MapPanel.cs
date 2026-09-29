@@ -73,7 +73,7 @@ public sealed class MapPanel : IPanel
         else
         {
             RefreshSpots();
-            var you = Position();
+            var you = WhereYouAre();
             bool inverted = _view switch { View.Castle => false, View.Inverted => true, _ => you?.Inverted ?? false };
             DrawControls();
             DrawSummary();
@@ -315,6 +315,22 @@ public sealed class MapPanel : IPanel
     }
 
     // ---- where you are (as the recomp's MapOverlayPanel works it out) ----
+
+    (bool Inverted, int X, int Y)? _lastPosition;
+
+    // Where you are, or where you were last while the game is paused, in a menu or the pause map, or between
+    // rooms (Position has no answer then); nothing once you leave the game.
+    (bool Inverted, int X, int Y)? WhereYouAre()
+    {
+        var now = Position();
+        if (now != null) _lastPosition = now;
+        else
+        {
+            var m = RecompOne.Runtime.Runtime.Mem;
+            if (m == null || !Game.Available || m.ReadU8(Game.GameStateAddr) != (byte)GameState.Play) _lastPosition = null;
+        }
+        return _lastPosition;
+    }
 
     const int InvertedStageBit = 0x20;
     const uint StageAddr = 0x800974A0, RoomLeftAddr = 0x800730B0, RoomTopAddr = 0x800730B4;

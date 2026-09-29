@@ -20,9 +20,8 @@ public sealed class ItemsPanel : IPanel
     public string TitleKey => "panel.archipelago.items";
     public bool IsOpen { get; set; }
 
-    const string SizeKey = "Archipelago.Items.IconSize", NamesKey = "Archipelago.Items.Names";
+    const string SizeKey = "Archipelago.Items.IconSize";
     int _iconSize;
-    bool _names;
 
     static readonly long[] Relics = [.. Enumerable.Range(300, 18).Select(i => (long)i)];   // Soul of bat .. Merman statue
     static readonly long[] VladRelics = [325, 326, 327, 328, 329];
@@ -37,7 +36,6 @@ public sealed class ItemsPanel : IPanel
     {
         var view = RecompOne.Runtime.Runtime.View;
         _iconSize = Math.Clamp(view.GetInt(SizeKey, 40), 24, 72);
-        _names = view.GetBool(NamesKey, false);
     }
 
     public void Draw()
@@ -73,16 +71,10 @@ public sealed class ItemsPanel : IPanel
 
     void DrawControls(bool fromSave)
     {
-        bool changed = ImGui.Checkbox("Names", ref _names);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Show each item's name under its icon.");
-        ImGui.SameLine();
         ImGui.SetNextItemWidth(120);
-        changed |= ImGui.SliderInt("Size", ref _iconSize, 24, 72);
-        if (changed)
+        if (ImGui.SliderInt("Icon size", ref _iconSize, 24, 72))
         {
-            var view = RecompOne.Runtime.Runtime.View;
-            view.SetBool(NamesKey, _names);
-            view.SetInt(SizeKey, _iconSize);
+            RecompOne.Runtime.Runtime.View.SetInt(SizeKey, _iconSize);
             RecompOne.Runtime.Runtime.SaveView();
         }
         ImGui.TextDisabled(fromSave ? "What your save has." : "What you've collected in Archipelago (load your save to see what it has).");
@@ -92,26 +84,23 @@ public sealed class ItemsPanel : IPanel
     {
         ImGui.SeparatorText(title);
         float size = _iconSize;
-        float width = _names ? MathF.Max(size, 76f) : size;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         float avail = ImGui.GetContentRegionAvail().X;
-        int perRow = Math.Max(1, (int)((avail + spacing) / (width + spacing)));
+        int perRow = Math.Max(1, (int)((avail + spacing) / (size + spacing)));
         for (int i = 0; i < items.Length; i++)
         {
             if (i % perRow != 0) ImGui.SameLine();
-            Tile(items[i], have, size, width);
+            Tile(items[i], have, size);
         }
     }
 
-    void Tile(long id, Owned have, float size, float width)
+    static void Tile(long id, Owned have, float size)
     {
         string name = ItemData.Get(id)?.Name ?? $"Item {id}";
         bool owned = have.Has(id);
         var draw = ImGui.GetWindowDrawList();
-        var at = ImGui.GetCursorScreenPos();
-        var iconAt = at + new Vector2((width - size) / 2, 0);
+        var iconAt = ImGui.GetCursorScreenPos();
 
-        ImGui.BeginGroup();
         draw.AddRectFilled(iconAt, iconAt + new Vector2(size, size), TileBackground, 4f);
         uint texture = Icons.Get(name);
         float pad = size * 0.1f;
@@ -125,24 +114,8 @@ public sealed class ItemsPanel : IPanel
             draw.AddText(iconAt + new Vector2((size - text.X) / 2, (size - text.Y) / 2), owned ? Lit : Dim, initials);
         }
         draw.AddRect(iconAt, iconAt + new Vector2(size, size), owned ? TileBorderLit : TileBorder, 4f, ImDrawFlags.None, owned ? 2f : 1f);
-        ImGui.Dummy(new Vector2(width, size));
-        if (_names)
-        {
-            string label = Fit(name, width);
-            float x = (width - ImGui.CalcTextSize(label).X) / 2;
-            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + x);
-            if (owned) ImGui.TextUnformatted(label);
-            else ImGui.TextDisabled(label);
-        }
-        ImGui.EndGroup();
+        ImGui.Dummy(new Vector2(size, size));
         if (ImGui.IsItemHovered()) Tooltip(id, name, owned, have);
-    }
-
-    static string Fit(string text, float width)
-    {
-        if (ImGui.CalcTextSize(text).X <= width) return text;
-        while (text.Length > 1 && ImGui.CalcTextSize(text + "...").X > width) text = text[..^1];
-        return text + "...";
     }
 
     static void Tooltip(long id, string name, bool owned, Owned have)
