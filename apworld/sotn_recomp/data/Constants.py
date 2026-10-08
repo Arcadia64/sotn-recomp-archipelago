@@ -259,6 +259,8 @@ shop_item_data = {
     },
 }
 
+# roomWrite's high half: the stage whose tiles are loaded again if you turn back in the loading room
+# (0x41 Castle Entrance; 0x27 Reverse Entrance for the inverted castle's rooms, as sotn.io has it).
 start_room_data = {
     1: {
         "comment": "Bottom of Forbidden Route",
@@ -707,7 +709,7 @@ start_room_data = {
         "xPos":  144,
         "yPos":  540,
         "xyWrite":  0x021c0090,
-        "roomWrite":  0x00410000,
+        "roomWrite":  0x00270000,
         "stageWrite":  0x0000  # Castle 2 Stage Numbers should mask off the 0x20 bit.
     },
     "46": {
@@ -717,7 +719,7 @@ start_room_data = {
         "xPos":  232,
         "yPos":  128,
         "xyWrite":  0x008000e8,
-        "roomWrite":  0x00410070,
+        "roomWrite":  0x00270070,
         "stageWrite":  0x0000
     },
     "47": {
@@ -727,7 +729,7 @@ start_room_data = {
         "xPos":  80,
         "yPos":  128,
         "xyWrite":  0x00800050,
-        "roomWrite":  0x004100c0,
+        "roomWrite":  0x002700c0,
         "stageWrite":  0x0000
     },
     "48": {
@@ -737,7 +739,7 @@ start_room_data = {
         "xPos":  232,
         "yPos":  128,
         "xyWrite":  0x008000e8,
-        "roomWrite":  0x00410008,
+        "roomWrite":  0x00270008,
         "stageWrite":  0x0001
     },
     "49": {
@@ -747,7 +749,7 @@ start_room_data = {
         "xPos":  537,
         "yPos":  128,
         "xyWrite":  0x00800219,
-        "roomWrite":  0x00410018,
+        "roomWrite":  0x00270018,
         "stageWrite":  0x0001
     },
     "50": {
@@ -757,7 +759,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  128,
         "xyWrite":  0x00800020,
-        "roomWrite":  0x00410008,
+        "roomWrite":  0x00270008,
         "stageWrite":  0x0002
     },
     "51": {
@@ -767,7 +769,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  128,
         "xyWrite":  0x00800020,
-        "roomWrite":  0x00410028,
+        "roomWrite":  0x00270028,
         "stageWrite":  0x0002
     },
     "52": {
@@ -777,7 +779,7 @@ start_room_data = {
         "xPos":  24,
         "yPos":  128,
         "xyWrite":  0x00800018,
-        "roomWrite":  0x00410008,
+        "roomWrite":  0x00270008,
         "stageWrite":  0x0003
     },
     "53": {
@@ -787,7 +789,7 @@ start_room_data = {
         "xPos":  246,
         "yPos":  128,
         "xyWrite":  0x008000f6,
-        "roomWrite":  0x00410068,
+        "roomWrite":  0x00270068,
         "stageWrite":  0x0003
     },
     "54": {
@@ -797,7 +799,7 @@ start_room_data = {
         "xPos":  128,
         "yPos":  128,
         "xyWrite":  0x00800080,
-        "roomWrite":  0x00410008,
+        "roomWrite":  0x00270008,
         "stageWrite":  0x0004
     },
     "55": {
@@ -807,7 +809,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  128,
         "xyWrite":  0x00800020,
-        "roomWrite":  0x00410050,
+        "roomWrite":  0x00270050,
         "stageWrite":  0x0004
     },
     "56": {
@@ -817,7 +819,7 @@ start_room_data = {
         "xPos":  256,
         "yPos":  128,
         "xyWrite":  0x00800100,
-        "roomWrite":  0x00410070,
+        "roomWrite":  0x00270070,
         "stageWrite":  0x0004
     },
     "57": {
@@ -827,7 +829,7 @@ start_room_data = {
         "xPos":  56,
         "yPos":  128,
         "xyWrite":  0x00800038,
-        "roomWrite":  0x00410058,
+        "roomWrite":  0x00270058,
         "stageWrite":  0x0005
     },
     "58": {
@@ -836,7 +838,7 @@ start_room_data = {
         "xPos":  204,
         "yPos":  128,
         "xyWrite":  0x008000cc,
-        "roomWrite":  0x00410038,
+        "roomWrite":  0x00270038,
         "stageWrite":  0x0006
     },
     "59": {
@@ -846,7 +848,7 @@ start_room_data = {
         "xPos":  125,
         "yPos":  512,
         "xyWrite":  0x0100007d,
-        "roomWrite":  0x00410000,
+        "roomWrite":  0x00270000,
         "stageWrite":  0x0007
     },
     "60": {
@@ -856,7 +858,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  128,
         "xyWrite":  0x00800020,
-        "roomWrite":  0x00410050,
+        "roomWrite":  0x00270050,
         "stageWrite":  0x0007
     },
     "61": {
@@ -866,7 +868,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  128,
         "xyWrite":  0x00800020,
-        "roomWrite":  0x00410088,
+        "roomWrite":  0x00270088,
         "stageWrite":  0x0007
     },
     "62": {
@@ -876,7 +878,7 @@ start_room_data = {
         "xPos":  18,
         "yPos":  128,
         "xyWrite":  0x00800012,
-        "roomWrite":  0x00410128,
+        "roomWrite":  0x00270128,
         "stageWrite":  0x0009
     },
     "63": {
@@ -886,7 +888,7 @@ start_room_data = {
         "xPos":  224,
         "yPos":  128,
         "xyWrite":  0x008000e0,
-        "roomWrite":  0x00410020,
+        "roomWrite":  0x00270020,
         "stageWrite":  0x0009
     },
     "64": {
@@ -896,7 +898,7 @@ start_room_data = {
         "xPos":  228,
         "yPos":  128,
         "xyWrite":  0x008000e4,
-        "roomWrite":  0x00410088,
+        "roomWrite":  0x00270088,
         "stageWrite":  0x0009
     },
     "65": {
@@ -906,7 +908,7 @@ start_room_data = {
         "xPos":  228,
         "yPos":  128,
         "xyWrite":  0x008000e4,
-        "roomWrite":  0x00410050,
+        "roomWrite":  0x00270050,
         "stageWrite":  0x000a
     },
     "66": {
@@ -916,7 +918,7 @@ start_room_data = {
         "xPos":  488,
         "yPos":  128,
         "xyWrite":  0x008001e8,
-        "roomWrite":  0x00410060,
+        "roomWrite":  0x00270060,
         "stageWrite":  0x000a
     },
     "67": {
@@ -926,7 +928,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  256,
         "xyWrite":  0x01000020,
-        "roomWrite":  0x00410018,
+        "roomWrite":  0x00270018,
         "stageWrite":  0x000b
     },
     "68": {
@@ -936,7 +938,7 @@ start_room_data = {
         "xPos":  16,
         "yPos":  128,
         "xyWrite":  0x00800010,
-        "roomWrite":  0x00410040,
+        "roomWrite":  0x00270040,
         "stageWrite":  0x000b
     },
     "69": {
@@ -946,7 +948,7 @@ start_room_data = {
         "xPos":  16,
         "yPos":  128,
         "xyWrite":  0x00800010,
-        "roomWrite":  0x00410040,
+        "roomWrite":  0x00270040,
         "stageWrite":  0x000c
     },
     "70": {
@@ -956,7 +958,7 @@ start_room_data = {
         "xPos":  248,
         "yPos":  128,
         "xyWrite":  0x008000f8,
-        "roomWrite":  0x00410030,
+        "roomWrite":  0x00270030,
         "stageWrite":  0x000c
     },
     "71": {
@@ -966,7 +968,7 @@ start_room_data = {
         "xPos":  504,
         "yPos":  128,
         "xyWrite":  0x008001f8,
-        "roomWrite":  0x00410010,
+        "roomWrite":  0x00270010,
         "stageWrite":  0x000c
     },
     "72": {
@@ -976,7 +978,7 @@ start_room_data = {
         "xPos":  32,
         "yPos":  128,
         "xyWrite":  0x00800020,
-        "roomWrite":  0x00410060,
+        "roomWrite":  0x00270060,
         "stageWrite":  0x000d
     },
     "73": {
@@ -986,7 +988,7 @@ start_room_data = {
         "xPos":  1728,
         "yPos":  128,
         "xyWrite":  0x008006c0,
-        "roomWrite":  0x00410018,
+        "roomWrite":  0x00270018,
         "stageWrite":  0x000d
     }
 }

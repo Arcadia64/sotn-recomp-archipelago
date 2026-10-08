@@ -2356,6 +2356,24 @@ def start_room_rando(castle_flag: int, world: "SotnWorld", patch: SotnPatchData)
         patch.write_token(APTokenTypes.WRITE, 0x45f897c, (0x0343).to_bytes(2, "little"))
         patch.write_token(APTokenTypes.WRITE, 0x45f879a, (0x03430342).to_bytes(4, "little"))
 
+    # Starts whose way out is shut from that side (sotn.io's start room fixes). The code ones are done by the
+    # mod's OptionHooks, which looks for these bytes.
+    if rand_room["stage"] == 0x06:  # Royal Chapel
+        # The Colosseum's door to the Royal Chapel is open without its switch: 'li v0,1' over the flag loads
+        # in ARE EntityCavernDoor.
+        for offset in (0x0440100c, 0x04401100):
+            patch.write_token(APTokenTypes.WRITE, offset, (0x34020001).to_bytes(4, "little"))
+            patch.write_token(APTokenTypes.WRITE, offset + 4, (0x00000000).to_bytes(4, "little"))
+        # No Jewel of Open door between the Royal Chapel and the Alchemy Laboratory: its layout entry is
+        # moved below its room.
+        patch.write_token(APTokenTypes.WRITE, 0x54b41f3, struct.pack("<B", 0x01))
+    elif rand_room["stage"] == 0x0B:  # Castle Keep
+        # The secret stairs down to Richter's room are open: 'li v0,1' over the flag loads in TOP
+        # EntityStairSwitch, func_us_801A9CB8 and EntitySecretStairs. (sotn.io puts the first one over the
+        # load's lui and changes the load's offset instead.)
+        for offset in (0x0563e4c4, 0x0563e7a8, 0x0563ea20, 0x0563ebcc, 0x0563ec40):
+            patch.write_token(APTokenTypes.WRITE, offset, (0x34020001).to_bytes(4, "little"))
+
 
 def randomize_shop(min_value: int, max_value: int, randomize_items: int, world: "SotnWorld",
                    patch: SotnPatchData) -> None:

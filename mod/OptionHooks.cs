@@ -269,6 +269,59 @@ static class OptionHooks
         _cutsceneSpoofed = false;
     }
 
+    // ---- starting_area (inverted castle): the map page after the Entrance trapdoor ----
+    // The recomp's own SecondCastleStart (a post hook on this function) switches g_StageId to the inverted
+    // castle when the seed has Rom.py's trapdoor patch. sotn.io's patch also redraws the map page there,
+    // which otherwise keeps the first castle's explored squares until the game is reloaded. Done here on
+    // the first call that sees the inverted castle.
+    const uint TrapdoorSite = 0x801BA3A4, LiA0Is0x20 = 0x34040020;
+    const uint RedrawMap = 0x800F2120;
+    static bool _trapdoorRedrawn;
+
+    [PreHook("no3", "EntityTrapDoor_no3")]
+    static void BeforeTrapdoor(CpuContext c, IMemory m)
+    {
+        if ((m.ReadU8(Game.StageIdAddr) & 0x20) == 0) _trapdoorRedrawn = false;
+        else if (!_trapdoorRedrawn && Active && m.ReadU32(TrapdoorSite) == LiA0Is0x20)
+        {
+            _trapdoorRedrawn = true;
+            GameApi.Call(c, m, RedrawMap);
+        }
+    }
+
+    // ---- starting_area: ways out of a Royal Chapel or Castle Keep start ----
+    // Rom.py makes these entities read their castle flag as set ('li v0,1' over the flag loads), so the way
+    // is open from the start; the flag itself is reported as set only for the call.
+    //   ARE EntityCavernDoor: the Colosseum's door to the Royal Chapel (ARE_TO_DAI_SHORTCUT).
+    //   TOP EntityStairSwitch, func_us_801A9CB8, EntitySecretStairs: the Keep's secret stairs down to
+    //   Richter's room (TOP_SECRET_STAIRS).
+    const uint CavernDoorSite = 0x801B6E84, ChapelShortcutFlag = Progress.CastleFlagsAddr + 0xB1;
+    const uint SecretStairsSite = 0x801AA054, SecretStairsFlag = Progress.CastleFlagsAddr + 0x94;
+    static uint _flagSpoofed;
+
+    static void FlagSetIn(IMemory m, uint site, uint flag)
+    {
+        _flagSpoofed = 0;
+        if (!Active || m.ReadU32(site) != LiV0Is1 || m.ReadU8(flag) != 0) return;
+        m.WriteU8(flag, 1);
+        _flagSpoofed = flag;
+    }
+
+    static void FlagSetOut(IMemory m)
+    {
+        if (_flagSpoofed != 0 && m.ReadU8(_flagSpoofed) == 1) m.WriteU8(_flagSpoofed, 0);
+        _flagSpoofed = 0;
+    }
+
+    [PreHook("are", "EntityCavernDoor_are")] static void ChapelDoorIn(CpuContext c, IMemory m) => FlagSetIn(m, CavernDoorSite, ChapelShortcutFlag);
+    [PostHook("are", "EntityCavernDoor_are")] static void ChapelDoorOut(CpuContext c, IMemory m) => FlagSetOut(m);
+    [PreHook("top", "EntityStairSwitch_top")] static void StairSwitchIn(CpuContext c, IMemory m) => FlagSetIn(m, SecretStairsSite, SecretStairsFlag);
+    [PostHook("top", "EntityStairSwitch_top")] static void StairSwitchOut(CpuContext c, IMemory m) => FlagSetOut(m);
+    [PreHook("top", "func_us_801A9CB8")] static void StairFloorIn(CpuContext c, IMemory m) => FlagSetIn(m, SecretStairsSite, SecretStairsFlag);
+    [PostHook("top", "func_us_801A9CB8")] static void StairFloorOut(CpuContext c, IMemory m) => FlagSetOut(m);
+    [PreHook("top", "EntitySecretStairs_top")] static void SecretStairsIn(CpuContext c, IMemory m) => FlagSetIn(m, SecretStairsSite, SecretStairsFlag);
+    [PostHook("top", "EntitySecretStairs_top")] static void SecretStairsOut(CpuContext c, IMemory m) => FlagSetOut(m);
+
     // ---- F_GAME / F_GAME2: map colour, MP vessel sprite, Richter palettes ----
     // These files stream through a ring buffer to VRAM, 0x2000 bytes at a time, and are never whole in
     // RAM. func_801080DC uploads the next chunk; patch the chunk just before it goes.
