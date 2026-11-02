@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0
+
+Test build of the Richter goal and traps. The shuffled castle from the 0.4.0 test build isn't in this one.
+
+- New `goal` option: `defeat_richter` ends the game at Richter in the Castle Keep, for a shorter game. Saving him counts too, and the inverted castle isn't part of the seed
+- New `trap_percentage` and `trap_types` options: some of your filler becomes Poison, Stone and Curse traps, which go off on you when anyone finds them. Off by default
+- New `disguise_traps` option, on by default: traps show the gold progression badge until you pick them up
+- When 25 or more items arrive at once, they share one popup, and key items and traps keep their own
+- Works with SymphonyRecomp 1.0
+- `starting_area`: sotn.io's fixes for Royal Chapel and Castle Keep starts
+
 ## 0.3.3
 
 - Docked windows now actually come back docked after restarting the game (in 0.3.2 they came back floating together)
