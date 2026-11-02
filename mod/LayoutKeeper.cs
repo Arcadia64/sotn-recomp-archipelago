@@ -27,7 +27,7 @@ sealed class LayoutKeeper : IFloatingPanel
     public bool IsOpen { get => true; set { } }
 
     const string Key = "Archipelago.Layout";
-    const string InterfaceFile = "interface.ini";   // the recomp's, next to the game (ConfigManager)
+    const string InterfaceFile = "interface.ini";   // the recomp's, next to the game
     const int CheckEveryFrames = 60;
     const int SaveEveryFrames = 60 * 10;   // written to disk at most this often (and when the game closes)
 
@@ -65,11 +65,11 @@ sealed class LayoutKeeper : IFloatingPanel
         string ini = ImGui.SaveIniSettingsToMemory();
         if (ini == _last) return;
         _last = ini;
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         view.SetString(Key, Convert.ToBase64String(Encoding.UTF8.GetBytes(ini)));
         if (_frame - _savedAt < SaveEveryFrames) return; // the recomp saves it with everything else on exit
         _savedAt = _frame;
-        RecompOne.Runtime.Runtime.SaveView();
+        ModSettings.Save();
     }
 
     // Called by each window right after it begins: logs, once after a restore, whether it came back docked.
@@ -82,11 +82,11 @@ sealed class LayoutKeeper : IFloatingPanel
     void Restore()
     {
         string? ini = null, from = null;
-        string stored = RecompOne.Runtime.Runtime.View.GetString(Key, "");
+        string stored = ModSettings.View.GetString(Key, "");
         if (stored.Length > 0)
         {
             try { ini = Encoding.UTF8.GetString(Convert.FromBase64String(stored)); from = "the mod's copy"; }
-            catch (FormatException) { RecompOne.Runtime.Runtime.View.SetString(Key, ""); }
+            catch (FormatException) { ModSettings.View.SetString(Key, ""); }
         }
         if (ini == null && _lastExitLayout != null) { ini = _lastExitLayout; from = "interface.ini"; }
         if (ini == null) return;

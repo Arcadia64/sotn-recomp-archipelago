@@ -33,7 +33,7 @@ public sealed class MessagesPanel : IPanel
 
     public MessagesPanel()
     {
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         _show = Filters.Select(f => view.GetBool(FilterKey + f.Kind, f.Default)).ToArray();
         _hintsOnlyMine = view.GetBool(FilterKey + "HintsMine", true);
         _hintsHideFound = view.GetBool(FilterKey + "HintsHideFound", false);
@@ -261,10 +261,10 @@ public sealed class MessagesPanel : IPanel
 
     void Save()
     {
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         for (int i = 0; i < Filters.Length; i++) view.SetBool(FilterKey + Filters[i].Kind, _show[i]);
         view.SetBool(FilterKey + "HintsMine", _hintsOnlyMine);
         view.SetBool(FilterKey + "HintsHideFound", _hintsHideFound);
-        RecompOne.Runtime.Runtime.SaveView();
+        ModSettings.Save();
     }
 }

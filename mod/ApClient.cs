@@ -819,13 +819,13 @@ public static class ApClient
 
     static string ClientUuid()
     {
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         var id = view.GetString("Archipelago.Uuid");
         if (id.Length == 0)
         {
             id = Guid.NewGuid().ToString("N");
             view.SetString("Archipelago.Uuid", id);
-            RecompOne.Runtime.Runtime.SaveView();
+            ModSettings.Save();
         }
         return id;
     }

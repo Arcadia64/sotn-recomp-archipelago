@@ -51,7 +51,7 @@ public sealed class ItemsPanel : IPanel
 
     public ItemsPanel()
     {
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         _iconSize = Math.Clamp(view.GetInt(SizeKey, 40), 24, 72);
         _all = view.GetBool(AllKey, false);
     }
@@ -102,10 +102,10 @@ public sealed class ItemsPanel : IPanel
         changed |= ImGui.SliderInt("Icon size", ref _iconSize, 24, 72);
         if (changed)
         {
-            var view = RecompOne.Runtime.Runtime.View;
+            var view = ModSettings.View;
             view.SetBool(AllKey, _all);
             view.SetInt(SizeKey, _iconSize);
-            RecompOne.Runtime.Runtime.SaveView();
+            ModSettings.Save();
         }
         ImGui.TextDisabled(fromSave ? "What your save has." : "What you've collected in Archipelago (load your save to see what it has).");
     }

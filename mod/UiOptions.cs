@@ -13,12 +13,12 @@ static class UiOptions
 
     public static bool Show
     {
-        get => _show ??= RecompOne.Runtime.Runtime.View.GetBool(Key, true);
+        get => _show ??= ModSettings.View.GetBool(Key, true);
         set
         {
             _show = value;
-            RecompOne.Runtime.Runtime.View.SetBool(Key, value);
-            RecompOne.Runtime.Runtime.SaveView();
+            ModSettings.View.SetBool(Key, value);
+            ModSettings.Save();
         }
     }
 
@@ -27,7 +27,7 @@ static class UiOptions
     public static bool Section(string label, string id, bool defaultOpen)
     {
         string key = "Archipelago.Section." + id;
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         bool stored = view.GetBool(key, defaultOpen);
         ImGui.SetNextItemOpen(stored, ImGuiCond.Once);
 
@@ -45,7 +45,7 @@ static class UiOptions
         if (open != stored)
         {
             view.SetBool(key, open);
-            RecompOne.Runtime.Runtime.SaveView();
+            ModSettings.Save();
         }
         return open;
     }

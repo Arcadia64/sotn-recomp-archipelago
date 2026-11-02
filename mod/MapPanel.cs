@@ -51,7 +51,7 @@ public sealed class MapPanel : IPanel
 
     public MapPanel()
     {
-        var settings = RecompOne.Runtime.Runtime.View;
+        var settings = ModSettings.View;
         _view = (View)Math.Clamp(settings.GetInt(ViewKey, 0), 0, 2);
         _showChecked = settings.GetBool(CheckedKey, true);
         _showItems = settings.GetBool(ItemsKey, false);
@@ -110,13 +110,13 @@ public sealed class MapPanel : IPanel
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Above the map: how many locations you've checked, and how many of the rest you can reach now.");
         if (!changed) return;
         _view = (View)view;
-        var settings = RecompOne.Runtime.Runtime.View;
+        var settings = ModSettings.View;
         settings.SetInt(ViewKey, view);
         settings.SetBool(CheckedKey, _showChecked);
         settings.SetBool(ItemsKey, _showItems);
         settings.SetBool(UnexploredKey, _showUnexplored);
         settings.SetBool(CountsKey, _showCounts);
-        RecompOne.Runtime.Runtime.SaveView();
+        ModSettings.Save();
     }
 
     void DrawSummary()

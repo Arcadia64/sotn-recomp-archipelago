@@ -101,7 +101,7 @@ public sealed class ArchipelagoMod : IMod
     // time, only the Connection window is open; it has buttons for the others.
     static void RestoreOpen(IPanel panel, bool defaultOpen)
     {
-        panel.IsOpen = RecompOne.Runtime.Runtime.View.Panels.TryGetValue(panel.Name, out var state) ? state.Open : defaultOpen;
+        panel.IsOpen = ModSettings.View.PanelOpen(panel, defaultOpen);
     }
 
     static void RemovePanel(IPanel panel)

@@ -17,7 +17,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GENERATED = os.path.join(ROOT, "ref", "SymphonyRecomp", "generated")
 HOOK = re.compile(r'\[(PreHook|PostHook|Replace)\("(\w+)",\s*"(\w+)"\)\]')
-ENTRY = re.compile(r"\[0x[0-9A-F]{8}u\] = SoTN\.(\w+),")
+ENTRY = re.compile(r"\[0x[0-9A-F]{8}u\] = SoTN(?:_\w+)?\.(\w+),")  # SoTN_<overlay>. from SymphonyRecomp 1.0
 
 
 def tables_from_source(overlay):

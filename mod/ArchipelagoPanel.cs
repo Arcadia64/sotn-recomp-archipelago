@@ -25,7 +25,7 @@ public sealed class ArchipelagoPanel : IPanel
 
     public ArchipelagoPanel()
     {
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         _server = view.GetString(ServerKey, "archipelago.gg:38281");
         _slot = view.GetString(SlotKey, "");
         _autoConnect = view.GetBool(AutoConnectKey, true);
@@ -129,17 +129,17 @@ public sealed class ArchipelagoPanel : IPanel
         ImGui.SameLine();
         if (ImGui.Checkbox("Connect when the game starts", ref _autoConnect))
         {
-            RecompOne.Runtime.Runtime.View.SetBool(AutoConnectKey, _autoConnect);
-            RecompOne.Runtime.Runtime.SaveView();
+            ModSettings.View.SetBool(AutoConnectKey, _autoConnect);
+            ModSettings.Save();
         }
     }
 
     void SaveFields()
     {
-        var view = RecompOne.Runtime.Runtime.View;
+        var view = ModSettings.View;
         view.SetString(ServerKey, _server.Trim());
         view.SetString(SlotKey, _slot.Trim());
-        RecompOne.Runtime.Runtime.SaveView();
+        ModSettings.Save();
     }
 
     // ---- the other windows ----

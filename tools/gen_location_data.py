@@ -67,7 +67,7 @@ STAGE_IDS = {
 ITEM_TYPES = {
     "USABLE": "Usable", "WEAPON1": "Weapon1", "WEAPON2": "Weapon2", "SHIELD": "Shield",
     "HELMET": "Helmet", "ARMOR": "Armor", "CLOAK": "Cloak", "ACCESSORY": "Accessory",
-    "RELIC": "Relic", "POWERUP": "Powerup", "EVENT": "Event",
+    "RELIC": "Relic", "POWERUP": "Powerup", "EVENT": "Event", "TRAP": "Trap",
 }
 
 
@@ -401,7 +401,7 @@ class RecompCode:
         return [n for n in self.names(overlay) if not n.endswith("_Impl")
                 and all(s in bodies.get(f"{n}_Impl", bodies[n]) for s in needles)]
 
-    ENTRY = re.compile(r"\[0x([0-9A-F]{8})u\] = SoTN\.(\w+),")
+    ENTRY = re.compile(r"\[0x([0-9A-F]{8})u\] = SoTN(?:_\w+)?\.(\w+),")
 
     def function_at(self, overlay, addr):
         """(hookable function containing the instruction at addr, whether the recomp replaced it by hand).
@@ -450,9 +450,12 @@ def prize_tables(zones_mod):
 
 def recomp_patch_reads():
     """RAM addresses the recomp's hand-written patches (ref/SymphonyRecomp/patches) mention: where its
-    rewrites read the patched bytes back, as `m.ReadU8(0x801ACA08)`."""
+    rewrites read the patched bytes back, as `m.ReadU8(0x801ACA08)`. Not its translation scripts (from 1.0): whole
+    stage functions copied out, full of jump labels that look the same but aren't reads."""
     found = set()
     for path in glob.glob(os.path.join(ROOT, "ref", "SymphonyRecomp", "patches", "**", "*.cs"), recursive=True):
+        if "translation" in os.path.relpath(path, ROOT).lower().split(os.sep):
+            continue
         for m in re.finditer(r"0x(8[0-9A-Fa-f]{7})", open(path, encoding="utf-8", errors="ignore").read()):
             found.add(int(m.group(1), 16))
     return found
@@ -529,7 +532,8 @@ def write_options(constants, disc, world_dir, despawn_stages, prize_table_addrs)
                  "0u | 0x00F0u", "0u | 0x0050u", "m.WriteU8((c.S0 + 0x80u), (byte)c.V1)")
     for stage in sorted(despawn_stages):
         overlay = disc.key_of(stage).lower()
-        found = code.hookable_with(overlay, drop_code)
+        # (SymphonyRecomp 1.0 names NO1's money and heart drop, which has the same resting step: not it.)
+        found = [name for name in code.hookable_with(overlay, drop_code) if 'PrizeDrop' not in name]
         if len(found) != 1:
             sys.exit(f"{overlay}: expected one item-drop entity, found {found}")
         lines.append(f'    [PreHook("{overlay}", "{found[0]}")] static void Drop_{overlay}(CpuContext c, IMemory m) => '
