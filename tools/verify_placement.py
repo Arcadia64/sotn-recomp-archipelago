@@ -3,9 +3,9 @@
 Usage (with the Archipelago venv, since the seed's multidata needs Archipelago to load):
   ref/archipelago/.venv/Scripts/python.exe tools/verify_placement.py [seed zip] [slot]
 
-1. Reads the seed zip: the multidata (what is at each location) and the slot's .apsotn patch.
+1. Reads the seed zip: the multidata (what is at each location) and the slot's disc writes (.sotn_tokens, saved with SOTN_RECOMP_DEBUG_TOKENS set when generating).
 2. Runs tools/placement-check (the mod's Placement.cs) on those placements.
-3. Converts every write in the .apsotn to (stage, RAM address) and compares:
+3. Converts every one of those writes to (stage, RAM address) and compares:
    - every write the mod makes must match the patch byte for byte;
    - every patch write at an address some location's placement uses must be made by the mod,
      unless the mod reports that location as unsupported.
@@ -31,16 +31,15 @@ def load_seed(zip_path, slot):
     with zipfile.ZipFile(zip_path) as z:
         multidata_name = next(n for n in z.namelist() if n.endswith(".archipelago"))
         raw = z.read(multidata_name)
-        patch_name = next(n for n in z.namelist() if n.endswith(".apsotn") and f"_P{slot}_" in n)
-        patch = z.read(patch_name)
+        # The world's disc writes, saved next to the seed with SOTN_RECOMP_DEBUG_TOKENS set when generating.
+        patch_name = next(n for n in z.namelist() if n.endswith(".sotn_tokens") and f"_P{slot}_" in n)
+        tokens = z.read(patch_name)
 
     import Utils
     multidata = Utils.restricted_loads(zlib.decompress(raw[1:]))
     placements = multidata["locations"][slot]
     scouts = [[loc, item, player, flags] for loc, (item, player, flags) in placements.items()]
 
-    with zipfile.ZipFile(tempfile.SpooledTemporaryFile()) if False else zipfile.ZipFile(_bytes_io(patch)) as p:
-        tokens = p.read("token_data.bin")
     return scouts, tokens, patch_name
 
 
