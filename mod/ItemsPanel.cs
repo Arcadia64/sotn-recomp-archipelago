@@ -30,6 +30,7 @@ public sealed class ItemsPanel : IPanel
     static readonly long[] KeyItems = [203, 183, 241, 242];                                // Holy glasses, Spike breaker, Gold and Silver rings
     static readonly long[] Cards = [318, 319, 320, 321, 322];
     const long HolyGlasses = 203, SoulOfBat = 300, FormOfMist = 307, PowerOfMist = 308, GravityBoots = 312, LeapStone = 313;
+    const long ForceOfEcho = 303, GasCloud = 309;
 
     // "All items": every other item by kind, in the game's order.
     static readonly (string Title, string Id, long[] Items)[] AllItems =
@@ -74,8 +75,10 @@ public sealed class ItemsPanel : IPanel
         {
             var have = Owned.Get();
             if (UiOptions.Show) DrawControls(have.FromSave);
-            Group("Relics", "relics", Relics, have, true);
-            Group("Relics of Vlad", "vlad", VladRelics, have, true);
+            // With goal defeat_richter these relics stay in the inverted castle: not in the seed.
+            bool inverted = !CheckTracker.RichterIsGoal;
+            Group("Relics", "relics", inverted ? Relics : [.. Relics.Where(i => i is not (ForceOfEcho or GasCloud))], have, true);
+            if (inverted) Group("Relics of Vlad", "vlad", VladRelics, have, true);
             Group("Key items", "keyitems", KeyItems, have, true);
             Group("Familiar cards", "cards", Cards, have, true);
             if (UiOptions.Section("Vessels", "vessels", true))
@@ -195,10 +198,14 @@ public sealed class ItemsPanel : IPanel
 
     static void DrawGoal(Owned have)
     {
-        if (!UiOptions.Section("Goal: defeat Dracula", "goal", true)) return;
-        int vlad = VladRelics.Count(have.Has);
-        Check(vlad == 5, $"The five relics of Vlad ({vlad} of 5)");
-        Check(have.Has(HolyGlasses), "Holy glasses (to reach the inverted castle)");
+        bool richter = CheckTracker.RichterIsGoal;
+        if (!UiOptions.Section(richter ? "Goal: defeat Richter" : "Goal: defeat Dracula", "goal", true)) return;
+        if (!richter)
+        {
+            int vlad = VladRelics.Count(have.Has);
+            Check(vlad == 5, $"The five relics of Vlad ({vlad} of 5)");
+            Check(have.Has(HolyGlasses), "Holy glasses (to reach the inverted castle)");
+        }
         bool fly = have.Has(SoulOfBat) || have.Has(FormOfMist) && have.Has(PowerOfMist) || have.Has(GravityBoots) && have.Has(LeapStone);
         Check(fly, "A way to fly: Soul of bat, Form + Power of mist, or Gravity boots + Leap stone");
     }

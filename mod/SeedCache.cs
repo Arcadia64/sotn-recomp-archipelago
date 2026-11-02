@@ -18,7 +18,7 @@ static class SeedCache
     const int CheckEveryFrames = 60 * 5;
     const int SeedsKept = 10;   // the most recently played; older ones are deleted
 
-    static (int Connection, int Checked, int Received, int Scouts, bool Goal, int Hints) _saved = (-1, -1, -1, -1, false, -1);
+    static (int Connection, int Checked, int Received, int Scouts, bool Goal, int Hints, int Traps) _saved = (-1, -1, -1, -1, false, -1, -1);
 
     static int _goalLookedOn = -1;
 
@@ -36,8 +36,9 @@ static class SeedCache
         {
             _goalLookedOn = ApClient.ConnectionId;
             if (!ApClient.GoalReached && CachedGoal(path)) ApClient.ReachGoal();
+            ApClient.TrapsHandled = Math.Max(ApClient.TrapsHandled, CachedTraps(path));
         }
-        var now = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached, HintState());
+        var now = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached, HintState(), ApClient.TrapsHandled);
         if (now == _saved) return;
         var seed = ApClient.ExportSeed();
         if (seed == null) return;
@@ -81,6 +82,22 @@ static class SeedCache
     {
         var hints = Messages.Hints;
         return hints.Length * 1000 + hints.Count(h => h.Found);
+    }
+
+    // This connection's seed has been looked up in its file (that file's goal and traps are in ApClient).
+    public static bool Looked => _goalLookedOn == ApClient.ConnectionId;
+
+    static int CachedTraps(string path)
+    {
+        try
+        {
+            return File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject seed
+                && seed["traps"] is JsonValue traps && traps.TryGetValue(out int count) ? count : 0;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
     }
 
     static bool CachedGoal(string path)
@@ -140,7 +157,7 @@ static class SeedCache
             if (seed == null || seed["version"]?.GetValue<int>() != 1) return false;
             if (!ApClient.ImportSeed(seed)) return false;
             File.SetLastWriteTimeUtc(FileFor(id), DateTime.UtcNow); // played now: kept by Prune
-            _saved = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached, HintState());
+            _saved = (ApClient.ConnectionId, ApClient.CheckedCount, ApClient.Received.Length, ApClient.ScoutCount, ApClient.GoalReached, HintState(), ApClient.TrapsHandled);
             Log.Info($"playing offline with seed {ApClient.SeedName}, slot {ApClient.Slot} ({ApClient.SlotName}) from this PC");
             return true;
         }

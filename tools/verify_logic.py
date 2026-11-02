@@ -23,6 +23,11 @@ OPTION_SETS = [
     {"enemysanity": 1, "enemysanity_needs_faerie_scroll": 1, "boss_drops": 1, "item_pool": 3},
     {"difficulty": 0, "open_shortcuts": 1},
     {"no_logic": 1},
+    {"goal": 1},
+    {"goal": 1, "item_pool": 0},
+    {"goal": 1, "caverns_back_door": 2, "colosseum_back_door": 1},
+    {"goal": 1, "enemysanity": 1, "enemysanity_needs_faerie_scroll": 1, "boss_drops": 1, "item_pool": 3},
+    {"goal": 1, "no_logic": 1},
 ]
 
 

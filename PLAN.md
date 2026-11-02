@@ -157,7 +157,7 @@ Status key:
 - Japan-only familiar cards (Sprite card, Nosedevil card): the tracker already leaves item ids 323-324 free for them
 - Transformation MP cost changes, free Gravity Boots
 - Extra jumps (`ExtraJumpsOffset`)
-- New final-door goals (alternate goal; the AP world has no goal option today)
+- New final-door goals (alternate goal)
 - Clock statue always open
 - Magic Mirror, Recycler, Target Confirmed preset items
 - Prologue reward and shop randomization (built-in randomizer)

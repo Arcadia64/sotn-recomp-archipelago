@@ -1,9 +1,23 @@
 from dataclasses import dataclass
-from Options import (OptionGroup, Toggle, Choice, NamedRange, ItemsAccessibility, StartInventoryPool,
-                     PerGameCommonOptions)
+from Options import (OptionGroup, Toggle, DefaultOnToggle, Choice, Range, NamedRange, OptionSet, ItemsAccessibility,
+                     StartInventoryPool, PerGameCommonOptions)
 
 # "Key items" below are the items the logic can need: the relics, the Gold and Silver rings, the Spike breaker
 # and the Holy glasses.
+
+
+# ---- Goal ----
+
+class Goal(Choice):
+    """What finishes your game.
+    defeat_dracula: beat Dracula at the end of the inverted castle, with the five relics of Vlad.
+    defeat_richter: beat Richter in the Castle Keep (saving him counts too), for a shorter game. The inverted
+    castle isn't part of the seed: its spots aren't checks, and the items found there in the vanilla game (the
+    relics of Vlad, Force of echo and Gas cloud) aren't in the item pool."""
+    display_name = "Goal"
+    option_defeat_dracula = 0
+    option_defeat_richter = 1
+    default = 0
 
 
 # ---- Item pool ----
@@ -61,6 +75,32 @@ class EnemysanityNeedsFaerieScroll(Toggle):
     display_name = "Enemysanity needs the Faerie scroll"
 
 
+class TrapPercentage(Range):
+    """How much of your filler is replaced by traps, in percent. 0: no traps. A trap goes off on you when anyone
+    finds it, and it can be in any world of the multiworld."""
+    display_name = "Trap percentage"
+    range_start = 0
+    range_end = 100
+    default = 0
+
+
+class TrapTypes(OptionSet):
+    """Which traps can be in your game.
+    Poison: weapons do half damage and you take double, for up to about a minute.
+    Stone: you turn to stone until you wiggle free with the d-pad, and hits while you're stone hurt a lot.
+    Curse: you can't use your weapons for up to about 17 seconds.
+    Gear that makes you immune to the status also protects you from the trap."""
+    display_name = "Trap types"
+    valid_keys = frozenset({"Poison", "Stone", "Curse"})
+    default = frozenset({"Poison", "Stone", "Curse"})
+
+
+class DisguiseTraps(DefaultOnToggle):
+    """Traps lying in your castle, from any game, show the gold badge of a progression item until you pick them up.
+    Off: they show a red badge."""
+    display_name = "Disguise traps"
+
+
 # ---- Castle ----
 
 class CavernsBackDoor(Choice):
@@ -96,6 +136,7 @@ class StartingArea(Choice):
     random_inverted_castle: a room in the inverted castle (Leap stone and Gravity boots work there until you
     reach the castle).
     random_anywhere: a room in either.
+    With goal defeat_richter, the start is always a room in the castle.
     The logic doesn't take the new start into account."""
     display_name = "Starting area"
     option_vanilla = 0
@@ -354,6 +395,7 @@ class RandomMusic(Toggle):
 
 @dataclass
 class SOTNOptions(PerGameCommonOptions):
+    goal: Goal
     accessibility: ItemsAccessibility
     start_inventory_from_pool: StartInventoryPool
     item_pool: ItemPool
@@ -362,6 +404,9 @@ class SOTNOptions(PerGameCommonOptions):
     boss_drops: BossDrops
     enemysanity: Enemysanity
     enemysanity_needs_faerie_scroll: EnemysanityNeedsFaerieScroll
+    trap_percentage: TrapPercentage
+    trap_types: TrapTypes
+    disguise_traps: DisguiseTraps
     caverns_back_door: CavernsBackDoor
     colosseum_back_door: ColosseumBackDoor
     open_shortcuts: OpenShortcuts
@@ -398,8 +443,12 @@ class SOTNOptions(PerGameCommonOptions):
 
 
 sotn_option_groups = [
+    OptionGroup("Goal", [
+        Goal,
+    ]),
     OptionGroup("Item pool", [
         ItemPool, RandomizeOtherItems, PowerfulItems, BossDrops, Enemysanity, EnemysanityNeedsFaerieScroll,
+        TrapPercentage, TrapTypes, DisguiseTraps,
     ]),
     OptionGroup("Castle", [
         CavernsBackDoor, ColosseumBackDoor, OpenShortcuts, StartingArea, InvertedLibraryCard, SkipClockTowerPuzzle,
@@ -419,6 +468,12 @@ sotn_option_groups = [
         MapColor, AlucardPalette, CapeLining, RandomColors, RelicSurprise, RandomMusic,
     ]),
 ]
+
+
+def has_inverted_castle(options: SOTNOptions) -> bool:
+    """Whether the seed goes on to the inverted castle: not with goal defeat_richter, where saving Richter (the way
+    in) already ends the game."""
+    return options.goal.value != Goal.option_defeat_richter
 
 
 def enemy_drops_mode(options: SOTNOptions) -> int:

@@ -1,8 +1,8 @@
 from worlds.generic.Rules import forbid_item, set_rule, add_rule, add_item_rule
 from BaseClasses import MultiWorld, CollectionState
 
-from .Locations import ABREV_TO_LOCATION, ENEMY_LOCATIONS, locations as LOCATIONS
-from .Options import SOTNOptions
+from .Locations import ABREV_TO_LOCATION, ENEMY_LOCATIONS, INVERTED_LOCATIONS, KILL_DRACULA, locations as LOCATIONS
+from .Options import SOTNOptions, has_inverted_castle
 from .data.Constants import EXTENSIONS, RELIC_NAMES
 
 
@@ -48,6 +48,14 @@ def sotn_has_spike(state: CollectionState, player: int) -> bool:
             (state.has("Spike breaker", player) and sotn_has_any(state, player)))
 
 
+def spots_in_seed(options: SOTNOptions) -> set:
+    """The item_pool's spots this seed has, by short name: with goal defeat_richter, none of the inverted castle's."""
+    spots = set(EXTENSIONS[options.item_pool.value])
+    if not has_inverted_castle(options):
+        spots = {spot for spot in spots if ABREV_TO_LOCATION[spot] not in INVERTED_LOCATIONS}
+    return spots
+
+
 # Spots whose item can be left behind for good: a boss's drop is gone once you leave the room (the boss
 # doesn't come back), and an item that falls out of a breakable wall or vase ("despawn") can be missed.
 # Where the check is sent when the boss dies or the wall breaks, another player's item there is safe, but one
@@ -71,7 +79,8 @@ def forbid_missable_progression(world: MultiWorld, player: int) -> None:
 
 def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     boss_locations = options.boss_drops.value
-    extension = options.item_pool.value
+    spots = spots_in_seed(options)
+    left_out = frozenset() if has_inverted_castle(options) else INVERTED_LOCATIONS
 
     # Forbid relics on boss drop
     if boss_locations:
@@ -79,6 +88,8 @@ def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> 
                     "DAI_Life Vessel_boss", "ARE_Life Vessel_boss", "NO2_Life Vessel_boss", "NO4_Life Vessel_boss",
                     "CHI_Life Vessel_boss", "CAT_Life Vessel_boss", "RNO4_Life Vessel_boss", "RCAT_Life Vessel_boss",
                     "RNZ0_Life Vessel_boss"]:
+            if ABREV_TO_LOCATION[loc] in left_out:
+                continue
             location = world.get_location(ABREV_TO_LOCATION[loc], player)
             for r in RELIC_NAMES:
                 forbid_item(location, r, player)
@@ -96,7 +107,7 @@ def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> 
                 "NZ1_Pot roast_89601948", "NZ1_Shuriken_89601952", "NZ1_TNT_89601960", "RNO1_Dim sum set_84398220",
                 "RNO3_Pot roast_85880396", "RNZ1_Bwaka knife_94094164", "RNZ1_Pot roast_94094156", "RARE_Life Vessel_8",
                 "RNZ1_Shuriken_94094160", "RNZ1_TNT_94094168", "CHI_Turkey_73307650", "CEN_Holy glasses_72803176"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             location = world.get_location(ABREV_TO_LOCATION[loc], player)
             forbid_item(location, "Heart Vessel", player)
             forbid_item(location, "Life Vessel", player)
@@ -106,7 +117,7 @@ def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> 
                 "NZ1_Pot roast_89601948", "NZ1_Shuriken_89601952", "NZ1_TNT_89601960", "RNO1_Dim sum set_84398220",
                 "RNO3_Pot roast_85880396", "RNZ1_Bwaka knife_94094164", "RNZ1_Pot roast_94094156",
                 "RNZ1_Shuriken_94094160", "RNZ1_TNT_94094168", "CHI_Turkey_73307650"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             location = world.get_location(ABREV_TO_LOCATION[loc], player)
             for r in RELIC_NAMES:
                 forbid_item(location, r, player)
@@ -115,13 +126,15 @@ def set_no_logic_rules(world: MultiWorld, player: int, options: SOTNOptions) -> 
 def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     open_are = options.colosseum_back_door.value
     open_no4 = options.caverns_back_door.value
-    extension = options.item_pool.value
+    spots = spots_in_seed(options)
+    left_out = frozenset() if has_inverted_castle(options) else INVERTED_LOCATIONS
     boss_locations = options.boss_drops.value
     enemysanity = options.enemysanity.value
     fs_enemysanity = options.enemysanity_needs_faerie_scroll.value
 
-    location = world.get_location("Reverse Center Cube - Kill Dracula", player)
-    set_rule(location, lambda state: sotn_has_dracula(state, player))
+    if has_inverted_castle(options):
+        location = world.get_location(KILL_DRACULA, player)
+        set_rule(location, lambda state: sotn_has_dracula(state, player))
 
     # Forbid relics on boss drop
     if boss_locations:
@@ -129,6 +142,8 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
                     "DAI_Life Vessel_boss", "ARE_Life Vessel_boss", "NO2_Life Vessel_boss", "NO4_Life Vessel_boss",
                     "CHI_Life Vessel_boss", "CAT_Life Vessel_boss", "RNO4_Life Vessel_boss", "RCAT_Life Vessel_boss",
                     "RNZ0_Life Vessel_boss"]:
+            if ABREV_TO_LOCATION[loc] in left_out:
+                continue
             location = world.get_location(ABREV_TO_LOCATION[loc], player)
             for r in RELIC_NAMES:
                 forbid_item(location, r, player)
@@ -165,7 +180,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
         enemy = world.get_location(ABREV_TO_LOCATION["NO4_Killer fish_enemy"], player)
         add_rule(enemy, lambda state: state.has("Holy symbol", player))
         if fs_enemysanity:
-            for loc in ENEMY_LOCATIONS.keys():
+            for loc in ENEMY_LOCATIONS.keys() - left_out:
                 enemy = world.get_location(loc, player)
                 add_rule(enemy, lambda state: state.has("Faerie scroll", player))
 
@@ -182,7 +197,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
                 "NZ1_Pot roast_89601948", "NZ1_Shuriken_89601952", "NZ1_TNT_89601960", "RNO1_Dim sum set_84398220",
                 "RNO3_Pot roast_85880396", "RNZ1_Bwaka knife_94094164", "RNZ1_Pot roast_94094156", "RARE_Life Vessel_8",
                 "RNZ1_Shuriken_94094160", "RNZ1_TNT_94094168", "CHI_Turkey_73307650", "CEN_Holy glasses_72803176"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             location = world.get_location(ABREV_TO_LOCATION[loc], player)
             forbid_item(location, "Heart Vessel", player)
             forbid_item(location, "Life Vessel", player)
@@ -192,7 +207,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
                 "NZ1_Pot roast_89601948", "NZ1_Shuriken_89601952", "NZ1_TNT_89601960", "RNO1_Dim sum set_84398220",
                 "RNO3_Pot roast_85880396", "RNZ1_Bwaka knife_94094164", "RNZ1_Pot roast_94094156",
                 "RNZ1_Shuriken_94094160", "RNZ1_TNT_94094168", "CHI_Turkey_73307650"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             location = world.get_location(ABREV_TO_LOCATION[loc], player)
             for r in RELIC_NAMES:
                 forbid_item(location, r, player)
@@ -220,7 +235,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
 
     # Item rules not bound by region
     # ARE - Colosseum
-    if "ARE_Holy sword_7" in EXTENSIONS[extension]:
+    if "ARE_Holy sword_7" in spots:
         location = world.get_location(ABREV_TO_LOCATION["ARE_Holy sword_7"], player)
         add_rule(location, lambda state: state.has("Gravity boots", player) or sotn_has_flying(state, player))
 
@@ -229,14 +244,14 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     loc_pool = []
     for loc in ["CAT_Library card_4", "CAT_Cross shuriken_11", "CAT_Cross shuriken_12", "CAT_Karma coin_13",
                 "CAT_Karma coin_14", "CAT_Pork bun_15", "CAT_Spike breaker_16"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_spike(state, player))
     # Ballroom mask area
     loc_pool = []
     for loc in ["CAT_Icebrand_1", "CAT_Heart Vessel_6", "CAT_Ballroom mask_7"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Gravity boots", player) or sotn_has_flying(state, player))
@@ -245,7 +260,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     loc_pool = []
     for loc in ["CHI_Power of sire_0", "CHI_Ring of ares_4", "CHI_Barley tea_8", "CHI_Peanuts_9",
                 "CHI_Peanuts_10", "CHI_Peanuts_11", "CHI_Peanuts_12", "CHI_Turkey_73307650"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Demon card", player))
@@ -254,7 +269,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     loc_pool = []
     for loc in ["DAI_Ankh of life_0", "DAI_Morningstar_1", "DAI_Mystic pendant_4", "DAI_Magic missile_5",
                 "DAI_Shuriken_6", "DAI_TNT_7", "DAI_Boomerang_8"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_any(state, player))
@@ -267,7 +282,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     loc_pool = []
     for loc in ["LIB_Stone mask_1", "LIB_Holy rod_2", "LIB_Takemitsu_5", "LIB_Onyx_6",
                 "LIB_Frankfurter_7", "LIB_Potion_8", "LIB_Antivenom_9", "LIB_Topaz circlet_10"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_any(state, player))
@@ -275,11 +290,11 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     # NO0 - Marble Gallery
     loc_pool = []
     for loc in ["NO0_Hammer_12", "NO0_Str. potion_13"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Gravity boots", player) or sotn_has_flying(state, player))
-    if "NO0_Life Vessel_0" in EXTENSIONS[extension]:
+    if "NO0_Life Vessel_0" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO0_Life Vessel_0"], player)
         if open_are:
             set_rule(location, lambda state: state.has("Jewel of open", player))
@@ -287,49 +302,53 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
             set_rule(location, lambda state: sotn_has_any(state, player))
     loc_pool = []
     for loc in ["NO0_Life apple_3", "NO0_Hammer_4", "NO0_Potion_5"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_flying(state, player))
     loc_pool = []
     for loc in ["NO0_Library card_10", "NO0_Attack potion_11"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Jewel of open", player))
     loc_pool = []
     for loc in ["NO0_Alucart shield_1", "NO0_Heart Vessel_2", "NO0_Alucart mail_6", "NO0_Alucart sword_7"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
-        add_rule(loc, lambda state: (sotn_has_reverse(state, player) or
-                                     (state.has("Cube of zoe", player) and sotn_has_any(state, player))))
+        # Without an inverted castle, only the Cube of zoe's way.
+        if has_inverted_castle(options):
+            add_rule(loc, lambda state: (sotn_has_reverse(state, player) or
+                                         (state.has("Cube of zoe", player) and sotn_has_any(state, player))))
+        else:
+            add_rule(loc, lambda state: state.has("Cube of zoe", player) and sotn_has_any(state, player))
     loc_pool = []
     for loc in ["NO0_Life Vessel_8", "NO0_Heart Vessel_9"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Silver ring", player) and state.has("Gold ring", player))
 
     # NO1 - Outer Wall
-    if "NO1_Garnet_3" in EXTENSIONS[extension]:
+    if "NO1_Garnet_3" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO1_Garnet_3"], player)
         add_rule(location, lambda state: sotn_has_any(state, player))
 
     # NO3 - Castle Entrance
-    if "NO3_Life Vessel_8" in EXTENSIONS[extension]:
+    if "NO3_Life Vessel_8" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO3_Life Vessel_8"], player)
         add_rule(location, lambda state: sotn_has_flying(state, player))
-    if "NO3_Holy mail_5" in EXTENSIONS[extension]:
+    if "NO3_Holy mail_5" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO3_Holy mail_5"], player)
         add_rule(location, lambda state: state.has("Gravity boots", player) or sotn_has_flying(state, player))
-    if "NO3_Life Vessel_6" in EXTENSIONS[extension]:
+    if "NO3_Life Vessel_6" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO3_Life Vessel_6"], player)
         if not open_no4:
             add_rule(location, lambda state: state.has("Jewel of open", player))
     loc_pool = []
     for loc in ["NO3_Life apple_2", "NP3_Jewel sword_9"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Soul of wolf", player) and state.has("Soul of bat", player))
@@ -337,51 +356,51 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     # NO4 - Underground Caverns
     loc_pool = []
     for loc in ["NO4_Antivenom_4", "NO4_Life Vessel_5"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Holy symbol", player))
-    if "NO4_Herald shield_7" in EXTENSIONS[extension]:
+    if "NO4_Herald shield_7" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO4_Herald shield_7"], player)
         add_rule(location, lambda state: (sotn_has_flying(state, player) or
                                           sotn_has_wolf(state, player) or
                                           state.has("Leap stone", player)))
-    if "NO4_Zircon_9" in EXTENSIONS[extension]:
+    if "NO4_Zircon_9" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO4_Zircon_9"], player)
         add_rule(location, lambda state: sotn_has_any(state, player) or sotn_has_flying(state, player))
-    if "NO4_Onyx_22" in EXTENSIONS[extension]:
+    if "NO4_Onyx_22" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO4_Onyx_22"], player)
         add_rule(location, lambda state: state.has("Merman statue", player) or sotn_has_flying(state, player))
     loc_pool = []
     for loc in ["NO4_Knuckle duster_23", "NO4_Life Vessel_24"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Holy symbol", player))
-    if "NO4_Elixir_25" in EXTENSIONS[extension]:
+    if "NO4_Elixir_25" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO4_Elixir_25"], player)
         add_rule(location, lambda state: state.has("Holy symbol", player) and state.has("Merman statue", player))
     loc_pool = []
     for loc in ["NO4_Life Vessel_28", "NO4_Heart Vessel_29"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: (state.has("Leap stone", player) or sotn_has_flying(state, player) or
                                      sotn_has_wolf(state, player)))
     loc_pool = []
     for loc in ["NO4_Secret boots_31", "NO4_Toadstool_33"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_any(state, player))
-    if "NO4_Nunchaku_36" in EXTENSIONS[extension]:
+    if "NO4_Nunchaku_36" in spots:
         location = world.get_location(ABREV_TO_LOCATION["NO4_Nunchaku_36"], player)
         add_rule(location, lambda state: state.has("Holy symbol", player))
 
     # TOP - Castle Keep
     loc_pool = []
     for loc in ["TOP_Turquoise_0", "TOP_Turkey_1"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_any(state, player))
@@ -391,7 +410,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     loc_pool = []
     for loc in ["RCAT_Resist thunder_2", "RCAT_Resist fire_3", "RCAT_Karma coin_4", "RCAT_Karma coin_5",
                 "RCAT_Red bean bun_6", "RCAT_Elixir_7", "RCAT_Library card_8"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: (state.has("Soul of bat", player) or
@@ -402,40 +421,40 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     # RCHI - Cave
     loc_pool = []
     for loc in ["RCHI_Power of sire_0", "RCHI_Life apple_1"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Demon card", player))
 
     # RDAI - Anti-Chapel
-    if "RDAI_Twilight cloak_16" in EXTENSIONS[extension]:
+    if "RDAI_Twilight cloak_16" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RDAI_Twilight cloak_16"], player)
         add_rule(location, lambda state: (state.has("Spike breaker", player) and state.has("Form of mist", player)) or
                  state.has("Power of mist", player) and state.has("Form of mist", player))
 
     # RLIB - Forbidden Library
-    if "RLIB_Staurolite_8" in EXTENSIONS[extension]:
+    if "RLIB_Staurolite_8" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RLIB_Staurolite_8"], player)
         add_rule(location, lambda state: state.has("Form of mist", player))
 
     # RNO0 - Black Marble Gallery
-    if "RNO0_Meal ticket_9" in EXTENSIONS[extension]:
+    if "RNO0_Meal ticket_9" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RNO0_Meal ticket_9"], player)
         add_rule(location, lambda state: state.has("Jewel of open", player))
-    if "RNO0_Heart refresh_11" in EXTENSIONS[extension]:
+    if "RNO0_Heart refresh_11" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RNO0_Heart refresh_11"], player)
         for relic in ["Heart of vlad", "Tooth of vlad", "Rib of vlad", "Ring of vlad", "Eye of vlad"]:
             # Bind relic now: upstream's lambda read it late, so all five rules tested "Eye of vlad".
             add_rule(location, lambda state, relic=relic: state.has(relic, player))
 
-    if "RNO0_Heart refresh_11" in EXTENSIONS[extension]:
+    if "RNO0_Heart refresh_11" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RNO0_Heart refresh_11"], player)
         add_rule(location, lambda state: sotn_has_dracula(state, player))
 
     # RNO1 - Reverse Outer Wall
     loc_pool = []
     for loc in ["RNO1_Shotel_1", "RNO1_Hammer_2"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Form of mist", player))
@@ -443,7 +462,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     # RNO2 - Death Wing's Lair
     loc_pool = []
     for loc in ["RNO2_Heart Vessel_11", "Rib of vlad"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: sotn_has_transformation(state, player))
@@ -451,7 +470,7 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     # RNO3 - Reverse Entrance
     loc_pool = []
     for loc in ["RNO3_Zircon_4", "RNO3_Opal_5", "RNO3_Beryl circlet_6"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Soul of wolf", player) and state.has("Soul of bat", player))
@@ -459,13 +478,13 @@ def set_rules(world: MultiWorld, player: int, options: SOTNOptions) -> None:
     # RNO4 - Reverse Caverns
     loc_pool = []
     for loc in ["RNO4_Life Vessel_6", "RNO4_Potion_8"]:
-        if loc in EXTENSIONS[extension]:
+        if loc in spots:
             loc_pool.append(world.get_location(ABREV_TO_LOCATION[loc], player))
     for loc in loc_pool:
         add_rule(loc, lambda state: state.has("Gravity boots", player))
-    if "RNO4_Bat pentagram_5" in EXTENSIONS[extension]:
+    if "RNO4_Bat pentagram_5" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RNO4_Bat pentagram_5"], player)
         add_rule(location, lambda state: state.has("Leap stone", player) or state.has("Soul of bat", player))
-    if "RNO4_Heart Vessel_7" in EXTENSIONS[extension]:
+    if "RNO4_Heart Vessel_7" in spots:
         location = world.get_location(ABREV_TO_LOCATION["RNO4_Heart Vessel_7"], player)
         add_rule(location, lambda state: state.has("Gravity boots", player) and state.has("Holy symbol", player))

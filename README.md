@@ -4,7 +4,8 @@ Castlevania: Symphony of the Night for [Archipelago](https://archipelago.gg), ru
 [SymphonyRecomp](https://github.com/BlackLabelHQ/SymphonyRecomp) instead of BizHawk. No emulator, and your disc
 doesn't get patched. The mod sets up your seed while the game runs.
 
-It's based on fdelduque's SotN apworld, so the items, locations and logic are the same.
+It's based on fdelduque's SotN apworld, with the same items, locations and logic, plus a shorter goal and optional
+traps.
 
 This is still a test build, so expect some bugs. If you find one, please open an [issue](../../issues).
 
@@ -37,7 +38,8 @@ manual connect.
 Then start a new game or load your save. Each save is tied to its seed and the mod keeps a copy of the seed on
 your PC, so you can keep playing offline. Everything syncs when you reconnect.
 
-The goal is beating Dracula.
+The goal is beating Dracula, or with `goal: defeat_richter`, beating Richter in the Castle Keep for a shorter game
+(no inverted castle).
 
 ## AP items
 
@@ -48,9 +50,12 @@ Items for other players show up as AP badges, colored by how important they are:
 | <img src="docs/images/ap-badge-progression.png" width="40" alt="Gold AP badge"> | **Progression**: someone needs it to progress |
 | <img src="docs/images/ap-badge-useful.png" width="40" alt="Blue AP badge"> | **Useful**: helpful, but not required |
 | <img src="docs/images/ap-badge-filler.png" width="40" alt="Grey AP badge"> | **Filler**: money, consumables, etc. |
-| <img src="docs/images/ap-badge-trap.png" width="40" alt="Red AP badge"> | **Trap** |
+| <img src="docs/images/ap-badge-trap.png" width="40" alt="Red AP badge"> | **Trap**: only with `disguise_traps` off. By default traps look like Progression |
 
-Picking one up sends it to its owner. Your own items look like normal items.
+Picking one up sends it to its owner. Your own items look like normal items, except traps.
+
+With `trap_percentage` above 0, some of your filler becomes traps that go off on you when anyone finds them:
+Poison, Stone or Curse (`trap_types`).
 
 ## In-game windows
 
@@ -65,7 +70,7 @@ The [SotN PopTracker pack](https://github.com/Michpem/SOTN-AP-MapTracker) also w
 
 ## Compared to the BizHawk version
 
-Both versions use the same items, locations and logic, and the PopTracker pack works with either. If you play on
+Both versions share their items, locations and logic, and the PopTracker pack works with either. If you play on
 BizHawk, fdelduque's version is the one to use. This one is for playing on SymphonyRecomp, and it adds a few
 things along the way:
 
@@ -74,11 +79,12 @@ things along the way:
 - A built-in map, item tracker and text client
 - Offline play, with saves tied to their seed
 - Reworded option names and some fixes (see the [changelog](CHANGELOG.md))
+- A shorter goal (`goal: defeat_richter`) and optional traps (`trap_percentage`)
 
 ## What the mod changes
 
 The mod only connects to the Archipelago server you enter. It keeps your last 10 seeds in `archipelago-seeds` in
-the game folder, stores its settings in the recomp's `interface.ini`, and uses a few unused bytes in your save
+the game folder, stores its settings with the recomp's own, and uses a few unused bytes in your save
 (which seed it belongs to and how many items you've received). It also turns off the recomp's built-in
 randomizer while you're playing an AP seed. More detail in [how it works](docs/how-it-works.md).
 

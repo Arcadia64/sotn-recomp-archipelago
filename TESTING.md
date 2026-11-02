@@ -64,7 +64,8 @@ For another copy of the recomp (a release download, say), pass its folder: `tool
 
 ## Checks that don't need the game
 
-From the project folder, with the Archipelago venv (they need the game built for the compile check):
+From the project folder, with the Archipelago venv (they need the game built for the compile check). `verify_placement`
+and `verify_payload` need a seed generated with the environment variable `SOTN_RECOMP_DEBUG_TOKENS=1`.
 
 ```powershell
 dotnet build tools\modcheck                                                      # mod compiles against the game
@@ -72,5 +73,7 @@ ref\archipelago\.venv\Scripts\python.exe tools\verify_placement.py <seed zip> 1 
 ref\archipelago\.venv\Scripts\python.exe tools\verify_payload.py <seed zip>      # slot_data payload vs the world's writes
 ref\archipelago\.venv\Scripts\python.exe tools\verify_logic.py                   # map logic export vs Archipelago's own
 ref\archipelago\.venv\Scripts\python.exe tools\verify_balancing.py [seed]        # game data built after progression balancing
+ref\archipelago\.venv\Scripts\python.exe tools\verify_goal.py                    # what each goal puts in the seed, and what it takes
+ref\archipelago\.venv\Scripts\python.exe tools\verify_traps.py                   # traps in the pool, and own traps on every kind of spot
 py -3.12 tools\check_hooks.py [--game <folder>]                                   # every hook names a real function
 ```

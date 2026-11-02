@@ -6,10 +6,10 @@ from BaseClasses import Tutorial, MultiWorld, ItemClassification, Item
 from Options import AssembleOptions
 
 from .Items import SotnItem, items, relic_table, item_id_to_name, JUNK_ITEMS, swap_in_powerful
-from .Locations import locations, SotnLocation
+from .Locations import locations, SotnLocation, KILL_DRACULA, DEFEAT_RICHTER, INVERTED_RELICS
 from .Regions import create_regions, create_regions_no_logic
 from .Rules import set_rules, set_no_logic_rules
-from .Options import SOTNOptions, sotn_option_groups
+from .Options import SOTNOptions, StartingArea, has_inverted_castle, sotn_option_groups
 from .Rom import SotnPatchData, write_tokens
 from .Recomp import recomp_payload
 from .Logic import export_logic
@@ -77,22 +77,30 @@ class SotnWorld(World):
         # Per world: upstream kept this as a class list and popped from it, so a second SotN slot
         # (or the next generation in the same process) got fewer powerful items.
         self.extra_add = list(EXTRA_ADD)
+        # An inverted-castle start turns off the Keep's scene with Richter (Rom.py start_room_rando).
+        if not has_inverted_castle(self.options) and self.options.starting_area.value in (
+                StartingArea.option_random_inverted_castle, StartingArea.option_random_anywhere):
+            self.options.starting_area.value = StartingArea.option_random_castle
 
     def create_item(self, name: str) -> Item:
         data = items[name]
         classification = data["classification"]
+        # Holy glasses only lead to the inverted castle (with goal defeat_richter, they just show Shaft's orb).
+        if name == "Holy glasses" and not has_inverted_castle(self.options):
+            classification = ItemClassification.useful
         # Upstream changed the shared item table, making Faerie scroll progression for every SotN slot.
         if name == "Faerie scroll" and self.options.enemysanity.value and self.options.enemysanity_needs_faerie_scroll.value:
             classification = ItemClassification.progression
         return SotnItem(name, classification, data["id"], self.player)
 
     def create_items(self) -> None:
-        added_items = 1  # "Reverse Center Cube - Kill Dracula"
+        added_items = 1  # the goal's event
         itempool: typing.List[SotnItem] = []
         active_locations = self.multiworld.get_unfilled_locations(self.player)
         total_location = len(active_locations)
 
-        loc = self.multiworld.get_location("Reverse Center Cube - Kill Dracula", self.player)
+        goal = KILL_DRACULA if has_inverted_castle(self.options) else DEFEAT_RICHTER
+        loc = self.multiworld.get_location(goal, self.player)
         loc.place_locked_item(self.create_event("Victory"))
 
         self.multiworld.completion_condition[self.player] = lambda state: state.has("Victory", self.player)
@@ -106,14 +114,15 @@ class SotnWorld(World):
         added_list = ["Spike breaker", "Holy glasses", "Gold ring", "Silver ring"]
         vanilla_list = []
 
-        # Add relics
-        for r in relic_table.keys():
+        # Add relics (with goal defeat_richter, not the inverted castle's)
+        relics = [r for r in relic_table.keys() if has_inverted_castle(self.options) or r not in INVERTED_RELICS]
+        for r in relics:
             itempool += [self.create_item(r)]
             added_items += 1
             added_list.append(r)
 
         for loc in active_locations:
-            if loc.name == "Reverse Center Cube - Kill Dracula":
+            if loc.name == goal:
                 continue
             if "Enemysanity" in loc.name:
                 continue
@@ -145,7 +154,7 @@ class SotnWorld(World):
                 itempool += [self.create_item("Silver ring")]
                 added_items += 4
 
-                for r in relic_table.keys():
+                for r in relics:
                     itempool += [self.create_item(r)]
                     added_items += 1
             elif self.options.difficulty.value == 1:
@@ -177,7 +186,15 @@ class SotnWorld(World):
         # Still have space? Add junk items
         itempool += [self.create_random_junk() for _ in range(total_location - added_items)]
 
+        self.replace_filler_with_traps(itempool)
         self.multiworld.itempool += itempool
+
+    def replace_filler_with_traps(self, itempool: List[SotnItem]) -> None:
+        kinds = sorted(f"{kind} trap" for kind in self.options.trap_types.value)
+        filler = [i for i, item in enumerate(itempool) if item.classification == ItemClassification.filler]
+        if kinds:
+            for i in self.random.sample(filler, len(filler) * self.options.trap_percentage.value // 100):
+                itempool[i] = self.create_item(self.random.choice(kinds))
 
     def create_random_junk(self) -> SotnItem:
         return self.create_item(self.get_filler_item_name())

@@ -55,8 +55,10 @@ public static class ApClient
     // seed's placement stays in use while the server answers the scouts again.
     static string _scoutsFor = "";
 
-    // Dracula beaten in this seed (CheckTracker.TickGoal); sent on each connection until the server has it.
+    // The goal reached in this seed (CheckTracker.TickGoal); sent on each connection until the server has it.
     static bool _goalReached;
+    // How many of the received items have been past the point of setting off a trap (Traps.OnReceived).
+    static int _trapsHandled;
     static int _goalSentOn = -1;
 
     // The seed came from this PC's cache (SeedCache), not a live connection: the game can be played with
@@ -127,6 +129,7 @@ public static class ApClient
                 ["scouts"] = new JsonArray(_scouts.Values.Select(Row).ToArray()),
                 ["received"] = new JsonArray(_received.Select(Row).ToArray()),
                 ["goal"] = _goalReached,
+                ["traps"] = _trapsHandled,
                 ["hints"] = Messages.HintsJson(),
             };
         }
@@ -164,6 +167,7 @@ public static class ApClient
                 _received.Clear();
                 foreach (var row in seed["received"]!.AsArray()) _received.Add(Item(row!));
                 _goalReached = seed["goal"]?.GetValue<bool>() ?? false;
+                _trapsHandled = seed["traps"]?.GetValue<int>() ?? 0;
                 Messages.SetHints(seed["hints"]);
                 _scoutsFor = Identity(_seedName, _slot);
                 _connectionId++;
@@ -251,6 +255,7 @@ public static class ApClient
             _scouts.Clear();
             _scoutsFor = "";
             _goalReached = false;
+            _trapsHandled = 0;
             _received.Clear();
             _tags.Clear();
         }
@@ -432,6 +437,7 @@ public static class ApClient
                 _scouts.Clear();
                 _scoutsFor = "";
                 _goalReached = false;
+                _trapsHandled = 0;
             }
             sendGoal = _goalReached;
             if (sendGoal) _goalSentOn = _connectionId;
@@ -467,7 +473,7 @@ public static class ApClient
              new JsonObject { ["cmd"] = "SetNotify", ["keys"] = hints });
         if (sendGoal)
         {
-            Log.Info("goal: telling the server Dracula was beaten");
+            Log.Info("goal: telling the server it was reached");
             SendGoal();
         }
     }
@@ -641,6 +647,12 @@ public static class ApClient
     }
 
     public static bool GoalReached { get { lock (_gate) return _goalReached; } }
+
+    public static int TrapsHandled
+    {
+        get { lock (_gate) return _trapsHandled; }
+        set { lock (_gate) _trapsHandled = value; }
+    }
 
     static void SendGoal() => Send(new JsonObject { ["cmd"] = "StatusUpdate", ["status"] = 30 });
 

@@ -78,7 +78,12 @@ public sealed class MapPanel : IPanel
         {
             RefreshSpots();
             var you = WhereYouAre();
-            bool inverted = _view switch { View.Castle => false, View.Inverted => true, _ => you?.Inverted ?? false };
+            bool inverted = _view switch
+            {
+                View.Castle => false,
+                View.Inverted => !CheckTracker.RichterIsGoal,
+                _ => you?.Inverted ?? false,
+            };
             if (UiOptions.Show) DrawControls();
             if (_showCounts) DrawSummary();
             DrawMap(inverted, you);
@@ -94,7 +99,10 @@ public sealed class MapPanel : IPanel
     {
         int view = (int)_view;
         ImGui.SetNextItemWidth(150);
-        bool changed = ImGui.Combo("##view", ref view, ViewNames, ViewNames.Length);
+        // With goal defeat_richter, the seed has nothing in the inverted castle to show.
+        int views = CheckTracker.RichterIsGoal ? (int)View.Inverted : ViewNames.Length;
+        if (view >= views) view = (int)View.Castle;
+        bool changed = ImGui.Combo("##view", ref view, ViewNames, views);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Which castle to show: the one you're in, or either.");
         ImGui.SameLine();
         changed |= ImGui.Checkbox("Show unexplored rooms", ref _showUnexplored);

@@ -82,7 +82,7 @@ static class OwedItems
     static bool OwnItem(long location, int slot, out long item)
     {
         item = 0;
-        if (!ApClient.TryGetScout(location, out var scout) || scout.Player != slot) return false;
+        if (!ApClient.TryGetScout(location, out var scout) || !scout.PlacedAsOwn(slot)) return false;
         item = scout.Item;
         return true;
     }

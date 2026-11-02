@@ -60,7 +60,7 @@ static partial class LocationData
     }
 }
 
-public enum ItemType { Usable, Weapon1, Weapon2, Shield, Helmet, Armor, Cloak, Accessory, Relic, Powerup, Event }
+public enum ItemType { Usable, Weapon1, Weapon2, Shield, Helmet, Armor, Cloak, Accessory, Relic, Powerup, Event, Trap }
 
 public sealed record ItemInfo(long Id, string Name, ItemType Type);
 

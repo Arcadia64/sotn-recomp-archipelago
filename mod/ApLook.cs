@@ -140,11 +140,14 @@ static class ApLook
     // PSX 15-bit colour, blue high. Bit 15 set keeps pure black opaque (0x0000 is transparent).
     static ushort Bgr(int r, int g, int b) => (ushort)(0x8000 | (b >> 3) << 10 | (g >> 3) << 5 | r >> 3);
 
+    // disguise_traps, on unless the seed says otherwise: a trap looks like an important item until it's found.
+    static bool Disguised => ApClient.OptionInt("disguise_traps", 1) != 0;
+
     static int PaletteFor(NetworkItem? item)
     {
         if (item is not { } i) return FillerPalette;
         if (i.Progression) return ProgressionPalette;
-        if (i.Trap) return TrapPalette;
+        if (i.Trap) return Disguised ? ProgressionPalette : TrapPalette;
         return i.Useful ? UsefulPalette : FillerPalette;
     }
 
@@ -216,7 +219,7 @@ static class ApLook
 
     static NetworkItem? LibrarianScout() => ApClient.TryGetScout(LibrarianLocation, out var s) ? s : null;
 
-    static bool ShopSellsOthersItem => Active && SeedPlan.LibrarianSellsItem && LibrarianScout() is { } s && s.Player != ApClient.Slot;
+    static bool ShopSellsOthersItem => Active && SeedPlan.LibrarianSellsItem && LibrarianScout() is { } s && !s.PlacedAsOwn(ApClient.Slot);
 
     // Listed until bought, then gone (the AP patch left it for sale forever).
     [PreHook("lib", "func_us_801B29C4")]
@@ -262,7 +265,7 @@ static class ApLook
             var scout = LibrarianScout();
             _savedName = m.ReadU32(def);
             _savedDesc = m.ReadU32(def + 4);
-            WriteCornerText(m, ShopNameBuffer, Describe(scout, ShopNameGlyphs));
+            WriteCornerText(m, ShopNameBuffer, Describe(scout, ShopNameGlyphs, forSale: true));
             string player = scout is { } s ? Clean(ApClient.PlayerName(s.Player)) : "";
             WriteAscii(m, ShopDescBuffer, player.Length > 0 ? $"Archipelago item for {player}" : "Archipelago item", ShopDescChars);
             m.WriteU32(def, ShopNameBuffer);
@@ -323,11 +326,12 @@ static class ApLook
 
     // ---- name text ----
 
-    static string Describe(NetworkItem? scout, int max = MaxTextGlyphs)
+    // forSale: the item is still in the shop, so a disguised trap isn't named.
+    static string Describe(NetworkItem? scout, int max = MaxTextGlyphs, bool forSale = false)
     {
         if (scout is not { } s) return "Archipelago item";
         string player = Clean(ApClient.PlayerName(s.Player));
-        string item = Clean(ApClient.ItemName(s.Item, s.Player));
+        string item = forSale && s.Trap && Disguised ? "" : Clean(ApClient.ItemName(s.Item, s.Player));
         if (item.Length == 0) item = "Archipelago item";
         if (player.Length == 0) return item.Length <= max ? item : item[..max]; // no letters we can show
         string text = $"{player}'s {item}";

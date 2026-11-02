@@ -1,9 +1,13 @@
 from BaseClasses import MultiWorld, Region
 
-from .Locations import SotnLocation, locations, ZONE, LOCATION_TO_ABREV
+from .Locations import SotnLocation, locations, ZONE, LOCATION_TO_ABREV, KILL_DRACULA, DEFEAT_RICHTER
 from .Rules import sotn_has_flying, sotn_has_any, sotn_has_wolf, sotn_has_reverse, sotn_has_dracula
-from .Options import SOTNOptions
+from .Options import SOTNOptions, has_inverted_castle
 from .data.Constants import EXTENSIONS
+from .data.Zones import INVERTED_ZONES
+
+# The keys of create_regions' tables that are the inverted castle's regions.
+INVERTED_REGIONS = range(18, 32)
 
 
 def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOptions) -> None:
@@ -52,6 +56,11 @@ def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOp
         39: Region("Lower Castle Keep", player, multiworld),
         40: Region("Upper Castle Keep", player, multiworld)
     }
+
+    inverted_castle = has_inverted_castle(options)
+    if not inverted_castle:
+        for k in INVERTED_REGIONS:
+            del regions_dict[k]
 
     name_to_region = {value.name: value for key, value in regions_dict.items()}
 
@@ -102,8 +111,9 @@ def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOp
     ltop.connect(utop)
 
     # Upper Castle Keep -> Reverse Castle Keep
-    rtop = name_to_region["Reverse Castle Keep"]
-    utop.connect(rtop)
+    if inverted_castle:
+        rtop = name_to_region["Reverse Castle Keep"]
+        utop.connect(rtop)
 
     # Lower Castle Keep -> Royal Chapel
     ltop.connect(dai)
@@ -160,6 +170,8 @@ def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOp
     # Add locations
     for k, v in locations.items():
         for zone in v["zones"]:
+            if zone in INVERTED_ZONES and not inverted_castle:
+                continue
             loc = LOCATION_TO_ABREV[k]
             if zone == ZONE["NO2"]:
                 # Olrox's Quarters
@@ -256,9 +268,13 @@ def create_regions_no_logic(multiworld: MultiWorld, player: int, options: SOTNOp
                             region.locations.append(SotnLocation(player, k, v["ap_id"], region))
                             added_locations.append(k)
 
-    # Add kill Dracula
-    region = name_to_region["Reverse Center Cube"]
-    region.locations.append(SotnLocation(player, "Reverse Center Cube - Kill Dracula", None, region))
+    # Add the goal: Dracula, or Richter (in the room past the Upper Castle Keep's stairs)
+    if inverted_castle:
+        region = name_to_region["Reverse Center Cube"]
+        region.locations.append(SotnLocation(player, KILL_DRACULA, None, region))
+    else:
+        region = name_to_region["Upper Castle Keep"]
+        region.locations.append(SotnLocation(player, DEFEAT_RICHTER, None, region))
 
     # Append regions to the multiworld
     for region in regions_dict.values():
@@ -312,6 +328,11 @@ def create_regions(multiworld: MultiWorld, player: int, options: SOTNOptions) ->
         40: Region("Upper Castle Keep", player, multiworld)
     }
 
+    inverted_castle = has_inverted_castle(options)
+    if not inverted_castle:
+        for k in INVERTED_REGIONS:
+            del regions_dict[k]
+
     name_to_region = {value.name: value for key, value in regions_dict.items()}
 
     menu = Region("Menu", player, multiworld)
@@ -361,8 +382,9 @@ def create_regions(multiworld: MultiWorld, player: int, options: SOTNOptions) ->
     ltop.connect(utop, rule=lambda state: sotn_has_flying(state, player))
 
     # Upper Castle Keep -> Reverse Castle Keep
-    rtop = name_to_region["Reverse Castle Keep"]
-    utop.connect(rtop, rule=lambda state: sotn_has_reverse(state, player))
+    if inverted_castle:
+        rtop = name_to_region["Reverse Castle Keep"]
+        utop.connect(rtop, rule=lambda state: sotn_has_reverse(state, player))
 
     # Lower Castle Keep -> Royal Chapel
     ltop.connect(dai)
@@ -421,6 +443,8 @@ def create_regions(multiworld: MultiWorld, player: int, options: SOTNOptions) ->
     # Add locations
     for k, v in locations.items():
         for zone in v["zones"]:
+            if zone in INVERTED_ZONES and not inverted_castle:
+                continue
             loc = LOCATION_TO_ABREV[k]
             if zone == ZONE["NO2"]:
                 # Olrox's Quarters
@@ -518,9 +542,13 @@ def create_regions(multiworld: MultiWorld, player: int, options: SOTNOptions) ->
                             region.locations.append(SotnLocation(player, k, v["ap_id"], region))
                             added_locations.append(k)
 
-    # Add kill Dracula
-    region = name_to_region["Reverse Center Cube"]
-    region.locations.append(SotnLocation(player, "Reverse Center Cube - Kill Dracula", None, region))
+    # Add the goal: Dracula, or Richter (in the room past the Upper Castle Keep's stairs)
+    if inverted_castle:
+        region = name_to_region["Reverse Center Cube"]
+        region.locations.append(SotnLocation(player, KILL_DRACULA, None, region))
+    else:
+        region = name_to_region["Upper Castle Keep"]
+        region.locations.append(SotnLocation(player, DEFEAT_RICHTER, None, region))
 
     # Append regions to the multiworld
     for region in regions_dict.values():

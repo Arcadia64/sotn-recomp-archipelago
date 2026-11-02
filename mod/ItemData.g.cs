@@ -293,5 +293,8 @@ static partial class ItemData
         new(402, "Exploration token", ItemType.Event),
         new(412, "Heart Vessel", ItemType.Powerup),
         new(423, "Life Vessel", ItemType.Powerup),
+        new(430, "Poison trap", ItemType.Trap),
+        new(431, "Stone trap", ItemType.Trap),
+        new(432, "Curse trap", ItemType.Trap),
     ];
 }

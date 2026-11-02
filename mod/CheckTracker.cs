@@ -23,12 +23,22 @@ static class CheckTracker
     const long Dopp40Location = 397;
     const long Dopp10Location = 388;
 
-    // Goal: Dracula dead in his room, Alucard alive, not leaving by Library card.
+    // Goal (slot_data "goal"): 0 Dracula dead in his room, Alucard alive, not leaving by Library card.
+    public const int GoalDefeatRichter = 1;
     const uint DraculaHpAddr = 0x80076ED6;
     const uint AlucardHpAddr = 0x80097BA0;
     const uint DemoTimerAddr = 0x80072EFC;
     const ushort DraculaRoom = 0x6CE0;
     const int ShaftDraculaStage = 0x38;
+
+    // Or 1: Richter beaten in his room (he stays in this step until the game goes to its ending), Alucard alive.
+    // Saving him ends the fight too, and he can't be fought after that, so it counts as well: killing Shaft's orb
+    // sets his time attack record. Not in the title screen's demo of the fight.
+    const int RichterStage = 0x18;
+    const uint RichterStepAddr = 0x80076304;    // g_Entities[64].step
+    const ushort RichterDeadStep = 0x11;        // PL_S_DEAD
+    const uint SavedRichterRecordAddr = 0x8003CA60;
+    const uint DemoModeAddr = 0x80097914;
 
     // Saved with the game once Dracula is beaten: CF[0xFB] bit 5 (OwedItems uses 0xFA-0xFB bits 0-4,
     // ApLook bit 7).
@@ -86,18 +96,20 @@ static class CheckTracker
             {
                 var loc = LocationData.Get(id);
                 Log.Info($"checked: {loc?.Name ?? id.ToString()}");
+                if (ApClient.TryGetScout(id, out var spot) && spot.Player == slot && spot.Trap)
+                    Traps.Queue(spot.Item, null);
                 // Spots collected before this save was linked gave their vanilla item, so give the seed's.
                 // (Special spots and enemysanity are covered by OwedItems either way.)
                 if (playedUnlinked && loc != null && loc.Kind != Detect.Enemy && !SeedPlan.IsUnsupported(id)
-                    && ApClient.TryGetScout(id, out var scout) && scout.Player == slot)
+                    && ApClient.TryGetScout(id, out var scout) && scout.PlacedAsOwn(slot))
                     ItemGiver.QueueDirect(scout.Item, loc.Name);
             }
             ApClient.SendChecks(found);
         }
     }
 
-    // Another player's item that has already been sent (picked up before a death or reload, or taken
-    // with !collect) is set as picked up in this save, so it doesn't appear again. Only floor items with
+    // Another player's item (or our own trap) that has already been sent (picked up before a death or reload,
+    // or taken with !collect) is set as picked up in this save, so it doesn't appear again. Only floor items with
     // an item-table slot, where that is one pickup flag. Our own items stay: the server doesn't send
     // them back, so after a reload they have to be picked up again.
     static void HideSentItems(IMemory m, int slot)
@@ -106,7 +118,7 @@ static class CheckTracker
         {
             if (loc.Kind != Detect.Loot || loc.Place.PickupFlags.Length == 0) continue;
             if (!ApClient.IsChecked(loc.Id) || SeedPlan.IsUnsupported(loc.Id)) continue;
-            if (!ApClient.TryGetScout(loc.Id, out var scout) || scout.Player == slot) continue;
+            if (!ApClient.TryGetScout(loc.Id, out var scout) || scout.PlacedAsOwn(slot)) continue;
             byte bit = (byte)(1 << loc.Place.PickupBit);
             foreach (var flag in loc.Place.PickupFlags)
                 if ((m.ReadU8(flag) & bit) == 0) m.WriteU8(flag, (byte)(m.ReadU8(flag) | bit));
@@ -166,14 +178,25 @@ static class CheckTracker
         if (!ApClient.HasSeed || SaveLink.Check(m) != SaveLink.Status.ThisSeed) return;
         if (!GoalReached(m))
         {
-            if (!DraculaDefeated(m)) return;
+            bool richter = RichterIsGoal;
+            if (!(richter ? RichterDefeated(m) : DraculaDefeated(m))) return;
             m.WriteU8(GoalFlagAddr, (byte)(m.ReadU8(GoalFlagAddr) | GoalBit));
-            Log.Info("goal reached: Dracula defeated");
+            Log.Info($"goal reached: {(richter ? "Richter" : "Dracula")} defeated");
         }
         ApClient.ReachGoal();
     }
 
     public static bool GoalReached(IMemory m) => (m.ReadU8(GoalFlagAddr) & GoalBit) != 0;
+
+    public static bool RichterIsGoal => ApClient.OptionInt("goal") == GoalDefeatRichter;
+
+    static bool RichterDefeated(IMemory m)
+    {
+        if (m.ReadU8(Game.GameStateAddr) != (byte)GameState.Play) return false;
+        if (m.ReadU32(DemoModeAddr) != 0 || m.ReadU32(AlucardHpAddr) == 0) return false;
+        if (m.ReadU32(SavedRichterRecordAddr) != 0) return true;
+        return m.ReadU8(Game.StageIdAddr) == RichterStage && m.ReadU16(RichterStepAddr) == RichterDeadStep;
+    }
 
     static bool DraculaDefeated(IMemory m)
     {

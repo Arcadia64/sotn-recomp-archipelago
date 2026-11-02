@@ -51,6 +51,9 @@ ZONE = {
     "RBO8": 49,  # Galamoth
 }
 
+# The inverted castle's stages and bosses.
+INVERTED_ZONES = frozenset(zone for name, zone in ZONE.items() if name.startswith("R"))
+
 # Title screen and cinematic area_flag = 0xeed8
 zones = {
     ZONE["ST0"]:

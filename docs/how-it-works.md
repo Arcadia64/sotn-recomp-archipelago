@@ -21,7 +21,7 @@ swapped for a placeholder that's drawn as an AP badge. Picking one up sends the 
 anything.
 
 Checks come from the game's own flags: items picked up, walls broken, boss kill times, the enemy list for
-enemysanity, and Dracula for the goal. The mod reads them a few times a second and sends anything new, so nothing
+enemysanity, and Dracula or Richter for the goal. The mod reads them a few times a second and sends anything new, so nothing
 gets lost if you played offline.
 
 Items from other players are given one at a time, and only during normal gameplay (not in menus, cutscenes or
@@ -33,9 +33,10 @@ back.
 The mod uses a few unused bytes in your save to store:
 - which seed and slot the save belongs to;
 - how many items you've received;
-- whether you've beaten Dracula.
+- whether you've reached the goal.
 
-That's how a save always plays with its own seed, either from the server or from the offline copy.
+That's how a save always plays with its own seed, either from the server or from the offline copy. Traps that have
+already gone off are counted in the offline copy, not the save, so loading an older save doesn't set them off again.
 
 ## The windows
 
@@ -49,7 +50,7 @@ That's how a save always plays with its own seed, either from the server or from
 - Network: only the AP server you connect to. No downloads, updates or telemetry.
 - Files:
   - `archipelago-seeds`: the last 10 seeds;
-  - the recomp's `interface.ini`: its settings;
+  - the recomp's settings file (`interface.ini`, or `settings.json` from 1.0): its settings;
   - `mods\.cache`: the compiled mod.
 - Your save: just the bytes listed above.
 - It turns off the recomp's built-in randomizer while you play an AP seed, since that would overwrite your seed's

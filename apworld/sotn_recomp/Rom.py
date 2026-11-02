@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, List
 from worlds.AutoWorld import World
 from worlds.Files import APTokenMixin, APTokenTypes
 from BaseClasses import Item, ItemClassification
-from .Items import (tile_id_offset, relic_id_to_name, items, weapon1, shield, armor, helmet, cloak, accessory, id_to_item,
+from .Items import (trap_items, tile_id_offset, relic_id_to_name, items, weapon1, shield, armor, helmet, cloak, accessory, id_to_item,
                     swap_in_powerful)
-from .Locations import locations
+from .Locations import locations, INVERTED_LOCATIONS, ENEMY_LOCATIONS
 from .Enemies import enemy_dict, enemy_stats_list, enemy_atk_type_list, enemy_weak_type_list
-from .Options import enemy_drops_mode, shop_stock_mode
+from .Options import enemy_drops_mode, shop_stock_mode, has_inverted_castle
 from .data.Constants import (RELIC_NAMES, SLOT, slots, equip_id_offset, equip_inv_id_offset,
                              faerie_scroll_force_addresses, shop_item_data, start_room_data, music, music_by_area)
 from .data.io_items import io_items, tile_filter, type_filter, io_item_name
@@ -700,10 +700,12 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
     dopp10_item = 0xffff
 
     for loc in world.multiworld.get_locations(world.player):
+        # Your own traps are placed like other players' items: the mod shows a badge and sets them off.
+        own_item = loc.item and loc.item.player == world.player and loc.item.name not in trap_items
         # Save Jewel of open item
         if loc.name == "Long Library - Librarian Shop Item":
             item_data = items["Secret boots"]
-            if loc.item.player == world.player:
+            if own_item:
                 item_data = items[loc.item.name]
             jewel_item = item_data["id"]
             patch.write_token(APTokenTypes.WRITE, 0xf4f3a, jewel_item.to_bytes(2))
@@ -711,12 +713,12 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
 
         # Save Doppelganger10 item
         if loc.name == "Outer Wall - Doppleganger 10 item":
-            if loc.item.player == world.player:
+            if own_item:
                 dopp10_item = items[loc.item.name]
             else:
                 dopp10_item = 0xffff
 
-        if loc.item and loc.item.player == world.player:
+        if own_item:
             if loc.item.name == "Victory":
                 continue
             item_data = items[loc.item.name]
@@ -849,7 +851,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
                     else:
                         print(f"ERROR in {loc_data}")
         # Off world items
-        elif loc.item and loc.item.player != world.player:
+        elif loc.item:
             # Save enemysanity locations
             if "Enemysanity" in loc.name:
                 enemysanity_items.append(0xfff)
@@ -858,10 +860,9 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
             item_data = items["Secret boots"]
             item_id = tile_value(item_data, {})
             gold_value = 0x04  # 04 -> Yellow bag of gold
-            if (loc.item.classification == ItemClassification.progression or
-                    loc.item.classification == ItemClassification.progression_skip_balancing):
+            if loc.item.advancement:
                 gold_value = 0x07  # 07 -> Blue bag of gold
-            elif loc.item.classification == ItemClassification.useful:
+            elif loc.item.useful:
                 gold_value = 0x03  # 03 -> Red bag of gold
             # Relic locations
             if "vanilla_item" in loc_data and loc_data["vanilla_item"] in RELIC_NAMES:
@@ -1069,6 +1070,8 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
 
     # Write enemysanity items in time-attack menu
     if len(enemysanity_items):
+        # The table has a place for every enemy; goal defeat_richter has none of the inverted castle's.
+        enemysanity_items += [0xfff] * (len(ENEMY_LOCATIONS) - len(enemysanity_items))
         # Final save 18 bytes 12 items (12) @RAM 0x0dfb58
         start_address = 0x438d4e8
         offset = 0x4298798
@@ -1212,6 +1215,9 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
 
     for k, v in locations.items():
         if "Enemysanity" in k:
+            continue
+        # goal defeat_richter: the inverted castle keeps its vanilla items, relics included
+        if k in INVERTED_LOCATIONS and not has_inverted_castle(world.options):
             continue
         if k not in filled_locations and randomize_items:
             if "no_offset" in v or v["ap_id"] == 40:

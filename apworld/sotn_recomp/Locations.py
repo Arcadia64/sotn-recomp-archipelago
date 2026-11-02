@@ -1,5 +1,5 @@
 from BaseClasses import Location
-from .data.Zones import ZONE, ZONE_TO_NAME
+from .data.Zones import ZONE, ZONE_TO_NAME, INVERTED_ZONES
 from .data.Constants import RELIC_NAMES, GAME_NAME
 
 LOCATION_TO_ABREV = dict()
@@ -4768,6 +4768,17 @@ for k, v in locations.items():
         ABREV_TO_LOCATION[res_str] = k
 
     AP_ID_TO_NAME[v["ap_id"]] = k
+
+
+# The goal, an event location (no id). defeat_richter's replaces defeat_dracula's.
+KILL_DRACULA = "Reverse Center Cube - Kill Dracula"
+DEFEAT_RICHTER = "Castle Keep - Defeat Richter"
+
+# What a defeat_richter seed leaves out: the locations found only in the inverted castle, and the relics at them
+# (the rest of the castle has no spots to spare for them).
+INVERTED_LOCATIONS = frozenset(k for k, v in locations.items() if INVERTED_ZONES.issuperset(v["zones"]))
+INVERTED_RELICS = frozenset(locations[k]["vanilla_item"] for k in INVERTED_LOCATIONS
+                            if locations[k].get("vanilla_item") in RELIC_NAMES)
 
 
 class SotnLocation(Location):

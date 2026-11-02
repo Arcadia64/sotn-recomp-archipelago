@@ -12,6 +12,7 @@ namespace SotnArchipelago;
 static class ItemGiver
 {
     const int GrantInterval = 20; // frames between items
+    const int BurstSize = 25;     // this many waiting at once (a release, an older save) get one message between them
 
     public const uint EngineStepAddr = 0x8003C9A4; // g_GameEngineStep
     public const byte EngineNormal = 1;             // normal play (3 = room transition, see Sotn.Stages)
@@ -32,6 +33,8 @@ static class ItemGiver
     static long _lastGrantFrame;
     static long _waitingSince = -1;
     static long _lastStuckReport = -1;
+    static int _burstUpTo = -1;   // received items announced so far in this burst (-1: no burst)
+    static int _burstOn = -1;     // on which connection
 
     public static int PendingDirect => _direct.Count;
 
@@ -64,13 +67,24 @@ static class ItemGiver
         if (given < received.Length)
         {
             var item = received[given];
+            string from = item.Player == ApClient.Slot ? "yourself" : ApClient.PlayerName(item.Player);
+            if (Traps.IsTrap(item.Item))
+            {
+                if (!SeedCache.Looked) return; // what's already gone off is in the seed's file
+                Traps.OnReceived(given, item.Item, from);
+                SaveLink.SetReceivedCount(m, given + 1);
+                _lastGrantFrame = frame;
+                if (given + 1 >= received.Length) _burstUpTo = -1;
+                return;
+            }
             Give(m, item.Item);
             SaveLink.SetReceivedCount(m, given + 1);
             _lastGrantFrame = frame;
-            string from = item.Player == ApClient.Slot ? "yourself" : ApClient.PlayerName(item.Player);
             string name = ApClient.ItemName(item.Item, ApClient.Slot);
             Log.Item($"Received {name} from {from}", item);
-            ApClient.ShowToast($"Received ({ItemClass.Name(item)})", $"{name} from {from}");
+            bool burst = InBurst(received, given);
+            if (!burst || item.Progression) ApClient.ShowToast($"Received ({ItemClass.Name(item)})", $"{name} from {from}");
+            if (given + 1 >= received.Length) _burstUpTo = -1;
             return;
         }
 
@@ -90,6 +104,23 @@ static class ItemGiver
             _lastGrantFrame = frame;
             Announce($"Got {ApClient.ItemName(owed.Item, ApClient.Slot)} ({owed.Why})");
         }
+    }
+
+    // Whether this item is part of a burst, whose other items don't get a message of their own: one says how many
+    // are coming (again if a lot more turn up), and progression items still get theirs. The text client lists them all.
+    static bool InBurst(NetworkItem[] received, int given)
+    {
+        if (_burstOn != ApClient.ConnectionId) (_burstOn, _burstUpTo) = (ApClient.ConnectionId, -1);
+        int from = _burstUpTo < 0 ? given : _burstUpTo;
+        if (received.Length - from < BurstSize) return _burstUpTo >= 0;
+        int count = 0;
+        for (int i = from; i < received.Length; i++)
+            if (!Traps.IsTrap(received[i].Item)) count++;
+        string text = $"{count} {(_burstUpTo < 0 ? "" : "more ")}items";
+        Log.Info($"Receiving {text}");
+        ApClient.ShowToast("Receiving items", text);
+        _burstUpTo = received.Length;
+        return true;
     }
 
     static void Announce(string text)

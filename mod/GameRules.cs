@@ -95,7 +95,7 @@ static class GameRules
 
     // Normal play only: never mid-transformation (the BizHawk client soft-locks when killed mid wing
     // smash), in a menu, during a room transition or a cutscene, or while already dying.
-    static bool SafeToKill(IMemory m)
+    public static bool SafeToKill(IMemory m)
     {
         if (m.ReadU8(ItemGiver.EngineStepAddr) != ItemGiver.EngineNormal) return false;
         if (m.ReadU8(Game.MenuOpenAddr) != 0 || m.ReadU8(Game.MapOpenAddr) != 0) return false;

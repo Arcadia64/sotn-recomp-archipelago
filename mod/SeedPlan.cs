@@ -109,7 +109,7 @@ static class SeedPlan
             if (!ApClient.TryGetScout(loc.Id, out var scout)) continue;
             IndexPickups(loc, scout, slot);
 
-            bool own = scout.Player == slot;
+            bool own = scout.PlacedAsOwn(slot);
             // Already in the patch bytes. The Librarian's relic is too; an item there is not (held back).
             if (_fromPayload && own && (loc.Id != LibrarianLocation || librarianHoldsRelic)) continue;
 
@@ -236,7 +236,7 @@ static class SeedPlan
         foreach (var flag in p.PickupFlags)
             _byPickupFlag[ApLook.PickupFlagIndex(flag, p.PickupBit)] = loc.Id;
 
-        if (scout.Player == slot) return;
+        if (scout.PlacedAsOwn(slot)) return;
         // Other players' items that drop straight from a wall, boss or cutscene carry no pickup flag.
         void Direct(int stage)
         {

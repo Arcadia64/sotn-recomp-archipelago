@@ -53,7 +53,7 @@ public static class Placement
         if (loc.Name.StartsWith("Enemysanity")) return r; // granted by the client, nothing placed
 
         var p = loc.Place;
-        if (scout.Player == slot) Own(loc, p, scout, r);
+        if (scout.PlacedAsOwn(slot)) Own(loc, p, scout, r);
         else Remote(loc, p, scout, r, look);
         return r;
     }

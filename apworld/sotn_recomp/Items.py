@@ -2016,6 +2016,27 @@ items = {
             "address": 0x000000,
             "classification": ItemClassification.progression
         },
+    "Poison trap":
+        {
+            "id": 430,
+            "type": "TRAP",
+            "address": 0x000000,
+            "classification": ItemClassification.trap
+        },
+    "Stone trap":
+        {
+            "id": 431,
+            "type": "TRAP",
+            "address": 0x000000,
+            "classification": ItemClassification.trap
+        },
+    "Curse trap":
+        {
+            "id": 432,
+            "type": "TRAP",
+            "address": 0x000000,
+            "classification": ItemClassification.trap
+        },
     "Heart Vessel":
         {
             "id": 412,
@@ -2033,6 +2054,7 @@ items = {
 }
 
 relic_id_to_name = {v["id"]: k for k, v in items.items() if v["type"] == "RELIC"}
+trap_items = {k for k, v in items.items() if v["type"] == "TRAP"}
 relic_table = {k: v for k, v in items.items() if v["type"] == "RELIC"}
 progression_items = {k: v for k, v in items.items() if v["classification"] == ItemClassification.progression}
 id_to_item = {v["id"]: v for k, v in items.items()}

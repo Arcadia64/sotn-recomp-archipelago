@@ -6,4 +6,8 @@ public readonly record struct NetworkItem(long Item, long Location, int Player, 
     public bool Progression => (Flags & 0b001) != 0;
     public bool Useful => (Flags & 0b010) != 0;
     public bool Trap => (Flags & 0b100) != 0;
+
+    // In this slot's own locations, the slot's own items are placed as themselves. Its own traps aren't: they're
+    // placed like other players' items, and go off when the spot is checked.
+    public bool PlacedAsOwn(int slot) => Player == slot && !Trap;
 }
