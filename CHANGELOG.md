@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3
+
+- Stable release of the 0.5 test builds
+- The setup docs now ask for SymphonyRecomp v1.1.2p or newer
+
 ## 0.5.2
 
 - Fixed the mod not loading on SymphonyRecomp v1.1
