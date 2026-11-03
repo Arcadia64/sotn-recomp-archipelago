@@ -54,8 +54,8 @@ Items for other players show up as AP badges, colored by how important they are:
 
 Picking one up sends it to its owner. Your own items look like normal items, except traps.
 
-With `trap_percentage` above 0, some of your filler becomes traps that go off on you when anyone finds them:
-Poison, Stone or Curse (`trap_types`).
+20% of your filler becomes traps that go off on you when anyone finds them: Poison, Stone or Curse (`trap_types`).
+`trap_percentage` changes the share, and 0 turns them off.
 
 ## In-game windows
 
@@ -79,7 +79,7 @@ things along the way:
 - A built-in map, item tracker and text client
 - Offline play, with saves tied to their seed
 - Reworded option names and some fixes (see the [changelog](CHANGELOG.md))
-- A shorter goal (`goal: defeat_richter`) and optional traps (`trap_percentage`)
+- A shorter goal (`goal: defeat_richter`) and traps (`trap_percentage`)
 
 ## What the mod changes
 

@@ -51,7 +51,7 @@ class PowerfulItems(Toggle):
     display_name = "Powerful items"
 
 
-class BossDrops(Toggle):
+class BossDrops(DefaultOnToggle):
     """The items the 13 bosses drop when beaten are checks. Your own key items are never put there: a drop you
     leave behind is gone for good."""
     display_name = "Boss drops"
@@ -81,7 +81,7 @@ class TrapPercentage(Range):
     display_name = "Trap percentage"
     range_start = 0
     range_end = 100
-    default = 0
+    default = 20
 
 
 class TrapTypes(OptionSet):
@@ -294,12 +294,12 @@ class KeepStartingEquipment(Toggle):
 
 # ---- Quality of life ----
 
-class SkipPrologue(Toggle):
+class SkipPrologue(DefaultOnToggle):
     """A new game starts with Alucard, without Richter's fight with Dracula."""
     display_name = "Skip the prologue"
 
 
-class InfiniteWingSmash(Toggle):
+class InfiniteWingSmash(DefaultOnToggle):
     """Wing smash keeps going until you hit a wall or run out of MP (leave bat form to stop it)."""
     display_name = "Infinite wing smash"
 
@@ -319,7 +319,7 @@ class FastWarp(Toggle):
     display_name = "Fast warp"
 
 
-class HealAtSaveRooms(Toggle):
+class HealAtSaveRooms(DefaultOnToggle):
     """Entering a save room restores HP and MP."""
     display_name = "Heal at save rooms"
 

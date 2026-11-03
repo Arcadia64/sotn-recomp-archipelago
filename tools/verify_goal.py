@@ -25,7 +25,7 @@ OPTION_SETS = [
     {"item_pool": 1},
     {"item_pool": 2},
     {"item_pool": 0, "randomize_other_items": 1},
-    {"boss_drops": 1},
+    {"boss_drops": 0},
     {"powerful_items": 1},
     {"caverns_back_door": 2, "colosseum_back_door": 1},
     {"caverns_back_door": 1, "open_shortcuts": 1},
@@ -48,6 +48,7 @@ def main():
     from BaseClasses import CollectionState, ItemClassification
     from test.general import setup_multiworld
     from worlds.AutoWorld import AutoWorldRegister
+    from Fill import FillError, distribute_items_restrictive
 
     world_type = AutoWorldRegister.world_types[GAME]
     package = world_type.__module__
@@ -142,6 +143,15 @@ def main():
         area = options.get("starting_area", 0)
         check(world.options.starting_area.value == (1 if area in (1, 2, 3) else 0),
               f"starting_area {area} became {world.options.starting_area.value}")
+
+    # The tightest fill there is: a solo key_items seed, where only the Life Vessels can go on the boss drops.
+    for goal in (0, 1):
+        for seed in range(300):
+            try:
+                distribute_items_restrictive(setup_multiworld(world_type, seed=seed, options={"item_pool": 0, "goal": goal}))
+            except FillError as error:
+                check(False, f"solo key_items, goal {goal}, seed {seed}: {str(error).splitlines()[0]}")
+    print("solo key_items: 300 seeds of each goal filled")
 
     print(f"{len(OPTION_SETS)} option sets, {len(problems)} problems")
     sys.exit(1 if problems else 0)

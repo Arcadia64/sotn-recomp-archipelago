@@ -196,6 +196,12 @@ class SotnWorld(World):
             for i in self.random.sample(filler, len(filler) * self.options.trap_percentage.value // 100):
                 itempool[i] = self.create_item(self.random.choice(kinds))
 
+    def fill_hook(self, progitempool, usefulitempool, filleritempool, fill_locations) -> None:
+        # Boss drops and a few other spots can't hold our relics (Rules.py). In a small solo pool, a Life Vessel
+        # could take the last spot a relic can use, and the seed would fail. AP places useful items from the end
+        # of this list, so the relics go first.
+        usefulitempool.sort(key=lambda item: item.player == self.player and item.name in relic_table)
+
     def create_random_junk(self) -> SotnItem:
         return self.create_item(self.get_filler_item_name())
 

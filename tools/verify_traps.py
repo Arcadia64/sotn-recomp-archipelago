@@ -1,7 +1,7 @@
 """Check the trap options in generated worlds (no game).
 
 For each option set below, with several seeds:
-  - with trap_percentage 0, no traps; otherwise that percentage of the filler is traps, of the chosen types, the pool
+  - traps are on by default; with trap_percentage 0, no traps; otherwise that percentage of the filler is traps, of the chosen types, the pool
     is the same size, and only filler was replaced;
   - the world still fills and can be beaten, its game data can be written (own traps can land on every kind of
     spot on their own in a solo seed), and own traps are placed like other players' items, never as tiles of their own;
@@ -16,6 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AP = os.path.join(ROOT, "ref", "archipelago")
 GAME = "Symphony of the Night (Recomp)"
 OPTION_SETS = [
+    {},
     {"trap_percentage": 0},
     {"trap_percentage": 10},
     {"trap_percentage": 100},
@@ -23,6 +24,7 @@ OPTION_SETS = [
     {"trap_percentage": 50, "trap_types": ["Stone", "Curse"]},
     {"trap_percentage": 100, "trap_types": []},
     {"trap_percentage": 100, "item_pool": 0},
+    {"trap_percentage": 100, "boss_drops": 0},
     {"trap_percentage": 100, "item_pool": 2, "boss_drops": 1},
     {"trap_percentage": 100, "boss_drops": 1, "enemysanity": 1},
     {"trap_percentage": 100, "goal": 1, "boss_drops": 1, "enemysanity": 1},
@@ -44,6 +46,7 @@ def main():
     package = world_type.__module__
     logic = sys.modules[f"{package}.Logic"]
     assert TRAPS <= set(world_type.item_name_to_id)
+    default = sys.modules[f"{package}.Options"].TrapPercentage.default
 
     problems = []
 
@@ -52,6 +55,7 @@ def main():
             problems.append(what)
             print(f"  PROBLEM: {what}")
 
+    check(default > 0, "traps are off by default")
     for options in OPTION_SETS:
         counts = []
         for seed in range(seeds):
@@ -67,7 +71,7 @@ def main():
             check(len(pool) == len(base_pool), f"{options}: pool size changed")
             filler = sum(1 for item in base_pool if item.classification == ItemClassification.filler)
             kinds = options.get("trap_types", ["Poison", "Stone", "Curse"])
-            want = filler * options["trap_percentage"] // 100 if kinds else 0
+            want = filler * options.get("trap_percentage", default) // 100 if kinds else 0
             check(len(traps) == want, f"{options}: {len(traps)} traps, expected {want} of {filler} filler")
             check({name.split()[0] for name in traps} <= set(kinds), f"{options}: wrong kinds {set(traps)}")
             kept = [item.name for item in base_pool if item.classification != ItemClassification.filler]
