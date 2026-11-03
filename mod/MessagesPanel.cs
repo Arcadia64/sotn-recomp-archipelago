@@ -11,6 +11,9 @@ namespace SotnArchipelago;
 // joining...) with filters, the hints for this slot, and a line to chat or send commands (!hint, !release...).
 public sealed class MessagesPanel : IPanel
 {
+    // ImGuiChildFlags.Border on the recomp before v1.1, Borders from v1.1 on. By number, so the mod compiles on both.
+    const ImGuiChildFlags ChildBorder = (ImGuiChildFlags)1;
+
     public string Name => "Archipelago text client";
     public string TitleKey => "panel.archipelago.messages";
     public bool IsOpen { get; set; }
@@ -91,7 +94,7 @@ public sealed class MessagesPanel : IPanel
         }
 
         float inputHeight = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y;
-        if (ImGui.BeginChild("##log", new Vector2(0, -inputHeight), ImGuiChildFlags.Border))
+        if (ImGui.BeginChild("##log", new Vector2(0, -inputHeight), ChildBorder))
         {
             bool atBottom = ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 2;
             foreach (var message in Messages.Snapshot())

@@ -15,6 +15,7 @@
     <Compile Include="../../mod/**/*.cs" />
     <Reference Include="$(GameBin)/sotn.dll" />
     <Reference Include="$(GameBin)/RecompOne.Runtime.dll" />
-    <Reference Include="$(GameBin)/ImGui.NET.dll" />
+    <Reference Include="$(GameBin)/ImGui.NET.dll" Condition="Exists('$(GameBin)/ImGui.NET.dll')" />
+    <Reference Include="$(GameBin)/Twizzle.ImGui-Bundle.NET.dll" Condition="Exists('$(GameBin)/Twizzle.ImGui-Bundle.NET.dll')" />
   </ItemGroup>
 </Project>

@@ -10,6 +10,9 @@ namespace SotnArchipelago;
 // details for bug reports and the log.
 public sealed class ArchipelagoPanel : IPanel
 {
+    // ImGuiChildFlags.Border on the recomp before v1.1, Borders from v1.1 on. By number, so the mod compiles on both.
+    const ImGuiChildFlags ChildBorder = (ImGuiChildFlags)1;
+
     const string ServerKey = "Archipelago.Server";
     const string SlotKey = "Archipelago.Slot";
     const string AutoConnectKey = "Archipelago.AutoConnect";
@@ -220,7 +223,7 @@ public sealed class ArchipelagoPanel : IPanel
         ImGui.Checkbox("Auto-scroll", ref _autoScroll);
 
         float height = ImGui.GetTextLineHeightWithSpacing() * LogLines + ImGui.GetStyle().WindowPadding.Y * 2;
-        if (ImGui.BeginChild("##aplog", new Vector2(0, height), ImGuiChildFlags.Border))
+        if (ImGui.BeginChild("##aplog", new Vector2(0, height), ChildBorder))
         {
             foreach (var line in Log.Snapshot())
             {
