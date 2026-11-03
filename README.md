@@ -13,7 +13,7 @@ This is still a test build, so expect some bugs. If you find one, please open an
 
 ## Requirements
 
-- SymphonyRecomp v0.5.1b or newer, set up with your own US disc image (SLUS-00067)
+- SymphonyRecomp v1.1.2p or newer, set up with your own US disc image (SLUS-00067)
 - Archipelago 0.6.0 or newer
 - The mod (`sotn-archipelago-mod.zip`) and the apworld (`sotn_recomp.apworld`) from the
   [latest release](../../releases/latest)
