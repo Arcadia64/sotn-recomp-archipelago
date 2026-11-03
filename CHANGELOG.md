@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- Fixed the mod not loading on SymphonyRecomp v1.1
+
 ## 0.5.1
 
 - Traps are on by default: `trap_percentage` is now 20
