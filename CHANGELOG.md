@@ -1,14 +1,20 @@
 # Changelog
 
+## 0.5.1
+
+- Traps are on by default: `trap_percentage` is now 20
+- `boss_drops`, `skip_prologue`, `infinite_wing_smash` and `heal_at_save_rooms` are on by default
+- Fixed solo `key_items` seeds with boss drops on sometimes failing to generate
+
 ## 0.5.0
 
 Test build of the Richter goal and traps. The shuffled castle from the 0.4.0 test build isn't in this one.
 
-- New `goal` option: `defeat_richter` ends the game at Richter in the Castle Keep, for a shorter game. Saving him counts too, and the inverted castle isn't part of the seed
-- New `trap_percentage` and `trap_types` options: some of your filler becomes Poison, Stone and Curse traps, which go off on you when anyone finds them. Off by default
-- New `disguise_traps` option, on by default: traps show the gold progression badge until you pick them up
-- When 25 or more items arrive at once, they share one popup, and key items and traps keep their own
-- Works with SymphonyRecomp 1.0
+- New goal `defeat_richter`: a shorter game that ends by beating or saving Richter, with no inverted castle
+- New traps: `trap_percentage` and `trap_types` turn some filler into Poison, Stone and Curse traps (off by default)
+- New `disguise_traps` (on by default): traps look like progression items until picked up
+- 25+ items arriving at once now share one popup; key items and traps keep their own
+- Works with SymphonyRecomp 1.0 (also builds on v0.5.1b, but hasn't been played there yet)
 - `starting_area`: sotn.io's fixes for Royal Chapel and Castle Keep starts
 
 ## 0.3.3
