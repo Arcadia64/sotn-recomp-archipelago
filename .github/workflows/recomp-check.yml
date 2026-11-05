@@ -1,0 +1,46 @@
+# Does the mod still compile on SymphonyRecomp's latest release, and do its hooks still exist? The game compiles mods
+# when it starts, so a rename on its side stops the mod loading for anyone who updates. No disc needed for either.
+name: Recomp check
+
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main, dev]
+    paths:
+      - "mod/**"
+      - "tools/modcheck/**"
+      - "tools/dispatch-dump/**"
+      - "tools/check_hooks.py"
+      - ".github/workflows/recomp-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.repository == 'Arcadia64/sotn-recomp-archipelago'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Download the recomp's latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view --repo BlackLabelHQ/SymphonyRecomp --json tagName --jq '"Checking against " + .tagName'
+          gh release download --repo BlackLabelHQ/SymphonyRecomp --pattern '*-windows-x64.zip' --dir "$RUNNER_TEMP/download"
+          unzip -q "$RUNNER_TEMP"/download/*.zip -d "$RUNNER_TEMP/recomp"
+          dll="$(find "$RUNNER_TEMP/recomp" -name sotn.dll | head -1)"
+          echo "GAME=$(cygpath -w "$(dirname "$dll")")" >> "$GITHUB_ENV"
+      - name: The mod compiles
+        run: dotnet build tools/modcheck "-p:GameBin=$env:GAME"
+      - name: Its hooks exist
+        run: python tools/check_hooks.py --game "$env:GAME"
