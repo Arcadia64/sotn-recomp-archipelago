@@ -1,5 +1,5 @@
 """Build the release files into dist/:
-  dist/archipelago.zip  - the SymphonyRecomp mod. Players drop the zip as-is into the recomp's mods
+  dist/sotn-archipelago-mod.zip - the SymphonyRecomp mod. Players drop the zip as-is into the recomp's mods
                           folder (the mod loader reads mod.json, mod-icon.png and every *.cs from a zip).
                           Laid out like the recomp's bundled mods: mod.json, mod-icon.png, source/*.cs.
   dist/sotn_recomp.apworld - the AP world ("Symphony of the Night (Recomp)"), for whoever generates.
@@ -28,7 +28,7 @@ def main():
     if os.path.exists(icon):
         files.append((icon, "mod-icon.png"))
     files.append((os.path.join(ROOT, "LICENSE"), "LICENSE"))
-    out = os.path.join(DIST, "archipelago.zip")
+    out = os.path.join(DIST, "sotn-archipelago-mod.zip")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for path, name in files:
             z.write(path, name)

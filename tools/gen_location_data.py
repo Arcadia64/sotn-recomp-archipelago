@@ -6,7 +6,7 @@ Writes:
   mod/ZoneData.g.cs     - g_StageId -> the AP world's zone name (sent to the tracker)
   mod/SpecialData.g.cs  - extra addresses the special-spot ports need (erase instructions, zone tables)
 
-Usage: py -3.12 tools/gen_location_data.py [path to the apworld's sotn folder]
+Usage: py -3.12 tools/gen_location_data.py [path to the world's folder, default apworld/sotn_recomp]
 
 The AP world addresses things as offsets into the raw disc image (2352-byte sectors). Stage
 and boss overlays all load at 0x80180000, so a disc offset inside a zone's file maps to
@@ -25,7 +25,7 @@ import types
 import map_positions
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_WORLD = os.path.join(ROOT, "ref", "ap-world", "apworld-b08161", "sotn")
+DEFAULT_WORLD = os.path.join(ROOT, "apworld", "sotn_recomp")
 RECOMP_RANDOMIZER = os.path.join(ROOT, "ref", "SymphonyRecomp", "patches", "rando", "Randomizer.cs")
 OUT_LOCATIONS = os.path.join(ROOT, "mod", "LocationData.g.cs")
 OUT_ITEMS = os.path.join(ROOT, "mod", "ItemData.g.cs")
@@ -368,7 +368,7 @@ class RecompCode:
         if overlay not in self._cache:
             path = os.path.join(GENERATED, f"{overlay}.cs")
             if not os.path.exists(path):
-                sys.exit(f"{path} missing: build the recomp first (see PLAN.md)")
+                sys.exit(f"{path} missing: build the recomp first (see TESTING.md)")
             self._cache[overlay] = open(path, encoding="utf-8").read().splitlines()
         return self._cache[overlay]
 
