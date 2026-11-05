@@ -206,31 +206,48 @@ public static class ApClient
     public static void Connect(string server, string slotName, string password)
     {
         Disconnect(keepOfflineSeed: true);
+        var addresses = ServerAddress.Parse(server);
+        if (addresses == null)
+        {
+            string problem = $"Couldn't read the server address \"{server.Trim()}\". It should look like archipelago.gg:38281";
+            Log.Error(problem);
+            SetState(ConnectionState.Disconnected, problem);
+            return;
+        }
         _slotName = slotName.Trim();
         _password = password;
         _uuid = ClientUuid();
         _refused = false;
         var cts = new CancellationTokenSource();
         _cts = cts;
-        SetState(ConnectionState.Connecting, $"Connecting to {server}...");
-        _ = Task.Run(() => KeepConnectedAsync(server.Trim(), cts.Token));
+        SetState(ConnectionState.Connecting, $"Connecting to {addresses[0].Authority}...");
+        _ = Task.Run(() => KeepConnectedAsync(addresses, cts.Token));
     }
 
     // Reconnects after a dropped connection, backing off, until Disconnect or the server refuses us.
-    static async Task KeepConnectedAsync(string server, CancellationToken ct)
+    static async Task KeepConnectedAsync(Uri[] addresses, CancellationToken ct)
     {
-        int failures = 0;
-        while (!ct.IsCancellationRequested)
+        try
         {
-            bool wasConnected = await RunAsync(server, ct);
-            if (ct.IsCancellationRequested || _refused) return;
-            failures = wasConnected ? 0 : failures + 1;
-            int wait = RetrySeconds[System.Math.Min(failures, RetrySeconds.Length - 1)];
-            string why;
-            lock (_gate) why = _status;
-            SetState(ConnectionState.Connecting, $"{why}. Retrying in {wait}s...");
-            try { await Task.Delay(TimeSpan.FromSeconds(wait), ct); }
-            catch (OperationCanceledException) { return; }
+            int failures = 0;
+            while (!ct.IsCancellationRequested)
+            {
+                bool wasConnected = await RunAsync(addresses, ct);
+                if (ct.IsCancellationRequested || _refused) return;
+                failures = wasConnected ? 0 : failures + 1;
+                int wait = RetrySeconds[System.Math.Min(failures, RetrySeconds.Length - 1)];
+                string why;
+                lock (_gate) why = _status;
+                SetState(ConnectionState.Connecting, $"{why}. Retrying in {wait}s...");
+                try { await Task.Delay(TimeSpan.FromSeconds(wait), ct); }
+                catch (OperationCanceledException) { return; }
+            }
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            // Not expected. Say so, rather than staying on "Connecting..." with nothing running.
+            Log.Error($"stopped connecting: {ex}");
+            SetState(ConnectionState.Disconnected, $"Stopped connecting: {ex.Message}");
         }
     }
 
@@ -263,12 +280,12 @@ public static class ApClient
     }
 
     // One connection attempt and session. True if the server accepted us before it ended.
-    static async Task<bool> RunAsync(string server, CancellationToken ct)
+    static async Task<bool> RunAsync(Uri[] addresses, CancellationToken ct)
     {
         int connectedBefore = ConnectionId;
         WebSocketTransport? socket = null;
         Exception? lastError = null;
-        foreach (var uri in CandidateUris(server))
+        foreach (var uri in addresses)
         {
             try
             {
@@ -313,19 +330,6 @@ public static class ApClient
             socket.Dispose();
         }
         return ConnectionId != connectedBefore;
-    }
-
-    // Same order as the official client: secure first when no scheme is given.
-    static IEnumerable<Uri> CandidateUris(string server)
-    {
-        if (server.Contains("://"))
-        {
-            yield return new Uri(server);
-            yield break;
-        }
-        if (!server.Contains(':')) server += ":38281";
-        yield return new Uri("wss://" + server);
-        yield return new Uri("ws://" + server);
     }
 
     // ---- receiving ----

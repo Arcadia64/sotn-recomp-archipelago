@@ -1,4 +1,5 @@
 #nullable enable
+using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using RecompOne.Runtime.Host.Window;
@@ -219,6 +220,8 @@ public sealed class ArchipelagoPanel : IPanel
     void DrawLog()
     {
         if (ImGui.SmallButton("Clear")) Log.Clear();
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Copy")) ImGui.SetClipboardText(string.Join("\n", Log.Snapshot().Select(line => line.Text)));
         ImGui.SameLine();
         ImGui.Checkbox("Auto-scroll", ref _autoScroll);
 

@@ -111,25 +111,42 @@ public sealed class ArchipelagoMod : IMod
         else if (PanelManager.Panels is List<IPanel> panels) panels.Remove(panel);
     }
 
+    // What runs every frame, in order. If one part fails the others still run, and its error goes in our log once
+    // (left to the recomp, the rest of the frame is skipped and the error only reaches the console).
+    static readonly (string Name, Action<VSyncEvent> Run)[] FrameParts =
+    [
+        ("GameWatch", e => GameWatch.Tick(e.Memory, e.Frame)),
+        ("SeedPlan.Update", e => SeedPlan.Update()),
+        ("CheckTracker", e => CheckTracker.Tick(e.Memory, e.Frame)),
+        ("ItemGiver", e => ItemGiver.Tick(e.Memory, e.Frame)),
+        ("Traps", e => Traps.Tick(e.Memory, e.Frame)),
+        ("TickGoal", e => CheckTracker.TickGoal(e.Memory)),
+        ("DeathLink", e => { while (ApClient.TryDequeueDeath(out var cause)) GameRules.OnDeathLink(cause); }),
+        ("GameRules", e => GameRules.Tick(e.Memory, e.Frame)),
+        ("Fixes", e => Fixes.Tick(e.Memory)),
+        ("ApplyResidentFiles", e => SeedPlan.ApplyResidentFiles(e.Memory)),
+        ("SeedCache", e => SeedCache.Tick(e.Frame)),
+        ("UseForSave", e => SeedCache.UseForSave(e.Memory, e.Frame)),
+        ("SyncDra", e => SeedPlan.SyncDra(e.Memory)),
+        ("RecompRando", e => RecompRando.Guard(e.Memory)),
+        ("PrizeTableSync", e => PrizeTableSync.Tick(e.Memory)),
+        ("Toasts", e => { while (ApClient.TryDequeueToast(out var toast)) ToastNotifications.ShowText(toast.Title, toast.Message, null, toast.Seconds); }),
+    ];
+
+    static readonly HashSet<string> _failedParts = [];
+
     static void OnVSync(VSyncEvent e)
     {
-        GameWatch.Tick(e.Memory, e.Frame);
-        SeedPlan.Update();
-        CheckTracker.Tick(e.Memory, e.Frame);
-        ItemGiver.Tick(e.Memory, e.Frame);
-        Traps.Tick(e.Memory, e.Frame);
-        CheckTracker.TickGoal(e.Memory);
-        while (ApClient.TryDequeueDeath(out var cause)) GameRules.OnDeathLink(cause);
-        GameRules.Tick(e.Memory, e.Frame);
-        Fixes.Tick(e.Memory);
-        SeedPlan.ApplyResidentFiles(e.Memory);
-        SeedCache.Tick(e.Frame);
-        SeedCache.UseForSave(e.Memory, e.Frame);
-        SeedPlan.SyncDra(e.Memory);
-        RecompRando.Guard(e.Memory);
-        PrizeTableSync.Tick(e.Memory);
-
-        while (ApClient.TryDequeueToast(out var toast))
-            ToastNotifications.ShowText(toast.Title, toast.Message, null, toast.Seconds);
+        foreach (var (name, run) in FrameParts)
+        {
+            try
+            {
+                run(e);
+            }
+            catch (Exception ex)
+            {
+                if (_failedParts.Add(name)) Log.Error($"{name} failed: {ex}");
+            }
+        }
     }
 }
