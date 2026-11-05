@@ -11,7 +11,7 @@ namespace SotnArchipelago;
 
 // Other players' items in the castle: the "----" placeholder (Placement.PlaceholderItem) drawn with
 // an Archipelago icon coloured by the item's classification, named "<player>'s <item>" when picked
-// up, and never added to the inventory (so no gold and no junk). Research notes: ref/ap-look-notes.md.
+// up, and never added to the inventory (so no gold and no junk).
 static class ApLook
 {
     const uint CurrentEntityAddr = 0x8006C3B8;   // g_CurrentEntity, set before each entity update

@@ -7,7 +7,7 @@ doesn't get patched. The mod sets up your seed while the game runs.
 It's based on fdelduque's SotN apworld, with the same items, locations and logic, plus a shorter goal and optional
 traps.
 
-This is still a test build, so expect some bugs. If you find one, please open an [issue](../../issues).
+If you find a bug, please open an [issue](../../issues).
 
 ![The game with the map, item tracker and text client docked next to it](docs/images/screenshot.png)
 

@@ -1,8 +1,8 @@
 # Running a test
 
 All of this runs on this PC, in a normal (not elevated) PowerShell window, as your own Windows account,
-starting in the project folder (the one with `PLAN.md`). Each step gets its own PowerShell window because
-the server and the game both keep running. First-time setup of `ref\` is in `PLAN.md` ("Setting up `ref/`").
+starting in the project folder. Each step gets its own PowerShell window because the server and the game both
+keep running. First-time setup of `ref\` is at the end of this file.
 
 ## 1. Start the Archipelago server
 
@@ -77,3 +77,28 @@ ref\archipelago\.venv\Scripts\python.exe tools\verify_goal.py                   
 ref\archipelago\.venv\Scripts\python.exe tools\verify_traps.py                   # traps in the pool, and own traps on every kind of spot
 py -3.12 tools\check_hooks.py [--game <folder>]                                   # every hook names a real function
 ```
+
+The compile and hook checks also run on GitHub against the recomp's latest release, once a day and on pushes that touch
+the mod (`.github/workflows/recomp-check.yml`). To run them against a download yourself:
+`dotnet build tools\modcheck -p:GameBin=<folder>` and `py -3.12 tools\check_hooks.py --game <folder>`.
+
+## Setting up a PC
+
+`ref/` is not in git. To build and test:
+
+1. `git clone --depth 1 --branch <latest release tag> https://github.com/BlackLabelHQ/SymphonyRecomp.git ref/SymphonyRecomp`,
+   then `git -C ref/SymphonyRecomp submodule update --init --recursive --depth 1`.
+2. US bin/cue in `ref/SymphonyRecomp/disc` (exact names in its README). If a private NuGet feed is set up
+   globally, add `ref/SymphonyRecomp/nuget.config` listing only nuget.org (copy `tools/modcheck/nuget.config`).
+3. **Before building**, add `ref/SymphonyRecomp/Directory.Build.targets` with
+   `<Project><ItemGroup><Compile Remove="mods/**" /></ItemGroup></Project>`. The game project compiles
+   every `.cs` under its folder, so without this a deployed mod gets compiled into the game itself.
+4. .NET 10 SDK. From `ref/SymphonyRecomp`: `dotnet build RecompOne/RecompOne.sln`, then
+   `dotnet run --project RecompOne/RecompOne.Recompiler config/sotn.json`, then `dotnet build RecompOne.SoTN.csproj`
+   (about 7 minutes).
+5. `git clone --depth 1 --branch 0.6.7 https://github.com/ArchipelagoMW/Archipelago.git ref/archipelago`;
+   Python 3.12 venv in `ref/archipelago/.venv`; `pip install -r requirements.txt "setuptools<81"`;
+   `python -c "import ModuleUpdate; ModuleUpdate.update(yes=True)"`; `mkdir custom_worlds`.
+6. For `tools/make_test_seeds.sh`, which also makes seeds with fdelduque's world: download `sotn.apworld` from
+   https://github.com/fdelduque/Archipelago/releases/tag/b08161 into `ref/ap-world/apworld-b08161/`.
+7. `tools/deploy-mod.sh` copies `mod/` into the game's `mods/archipelago` (enable it once in the game's Mods menu).

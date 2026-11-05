@@ -7,7 +7,7 @@ using Sotn;
 
 namespace SotnArchipelago;
 
-// Seed options whose patch bytes are code the recomp doesn't read back (docs/research/options-audit.md).
+// Seed options whose patch bytes are code the recomp doesn't read back.
 // Same convention as the recomp's own rewrites: each fix only acts when the patched bytes are in RAM
 // (SeedPlan writes the seed's patch data as files load), so it follows the seed exactly.
 static class OptionHooks
