@@ -788,7 +788,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
                             write_entity(loc_data, {"id": 0x000c, "state": loc_data["index"]} | as_item, patch)
                             write_tile_id(loc_data["zones"], loc_data["index"], item_id, patch)
                         else:
-                            print(f"ERROR on {loc_data}")
+                            raise ValueError(f"no way to place an item at {loc.name}")
             # Item locations
             else:
                 if "no_offset" in loc_data:
@@ -849,7 +849,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
                         address = loc_data["bin_address"]
                         patch.write_token(APTokenTypes.WRITE, address, item_id.to_bytes(2, "little"))
                     else:
-                        print(f"ERROR in {loc_data}")
+                        raise ValueError(f"no way to place an item at {loc.name}")
         # Off world items
         elif loc.item:
             # Save enemysanity locations
@@ -893,7 +893,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
                         write_entity(loc_data, {"id": 0x000c, "state": loc_data["index"]} | as_item, patch)
                         write_tile_id(loc_data["zones"], loc_data["index"], gold_value, patch)
                     else:
-                        print(f"ERROR on {loc_data}")
+                        raise ValueError(f"no way to place an item at {loc.name}")
             # Items locations
             else:
                 # 06 -> Green bag of gold
@@ -928,7 +928,7 @@ def write_tokens(world: "SotnWorld", patch: SotnPatchData):
                         address = loc_data["bin_address"]
                         patch.write_token(APTokenTypes.WRITE, address, item_id.to_bytes(2, "little"))
                     else:
-                        print(f"ERROR off world in {loc_data}")
+                        raise ValueError(f"no way to place another player's item at {loc.name}")
 
     # Jewel of open price at 0x47a3098 01f4/500 change to 10
     patch.write_token(APTokenTypes.WRITE, 0x47a3098, (10).to_bytes(2, "little"))
