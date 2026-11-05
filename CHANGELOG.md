@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.4
+
+- The Server box takes `/connect address` as a room's page gives it, and an address it can't read shows an error instead of staying on "Connecting..."
+- If part of the mod fails during play, the rest keeps running and the error goes in the log
+- The log has a Copy button
+- Fixed the `Weapon 1H` and `Weapon 2H` item groups: 17 weapons were in the wrong one
+
 ## 0.5.3
 
 - Stable release of the 0.5 test builds
@@ -17,9 +24,9 @@
 
 ## 0.5.0
 
-Test build of the Richter goal and traps. The shuffled castle from the 0.4.0 test build isn't in this one.
+Test build of the Richter goal and traps.
 
-- New goal `defeat_richter`: a shorter game that ends by beating or saving Richter, with no inverted castle
+- New goal `defeat_richter`: a shorter game that ends by beating or saving Richter
 - New traps: `trap_percentage` and `trap_types` turn some filler into Poison, Stone and Curse traps (off by default)
 - New `disguise_traps` (on by default): traps look like progression items until picked up
 - 25+ items arriving at once now share one popup; key items and traps keep their own
