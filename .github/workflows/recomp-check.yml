@@ -1,5 +1,9 @@
 # Does the mod still compile on SymphonyRecomp's latest release, and do its hooks still exist? The game compiles mods
 # when it starts, so a rename on its side stops the mod loading for anyone who updates. No disc needed for either.
+# Also checked against the oldest release the README asks for, since one source has to compile on both.
+#
+# GitHub only runs a schedule from the default branch (main), with main's copy of this file: the daily run does
+# nothing until this file is on main. It then checks main (what the stable release has) and dev (the test builds).
 name: Recomp check
 
 on:
@@ -22,21 +26,30 @@ jobs:
   check:
     if: github.repository == 'Arcadia64/sotn-recomp-archipelago'
     runs-on: windows-latest
+    name: ${{ matrix.branch || github.ref_name }} on ${{ matrix.recomp }}
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ github.event_name == 'schedule' && fromJSON('["main", "dev"]') || fromJSON('[""]') }}
+        recomp: [latest, v1.1.2p]
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.branch }}
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - name: Download the recomp's latest release
+      - name: Download the recomp release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ matrix.recomp != 'latest' && matrix.recomp || '' }}
         run: |
-          gh release view --repo BlackLabelHQ/SymphonyRecomp --json tagName --jq '"Checking against " + .tagName'
-          gh release download --repo BlackLabelHQ/SymphonyRecomp --pattern '*-windows-x64.zip' --dir "$RUNNER_TEMP/download"
+          gh release view $TAG --repo BlackLabelHQ/SymphonyRecomp --json tagName --jq '"Checking against " + .tagName'
+          gh release download $TAG --repo BlackLabelHQ/SymphonyRecomp --pattern '*-windows-x64.zip' --dir "$RUNNER_TEMP/download"
           unzip -q "$RUNNER_TEMP"/download/*.zip -d "$RUNNER_TEMP/recomp"
           dll="$(find "$RUNNER_TEMP/recomp" -name sotn.dll | head -1)"
           echo "GAME=$(cygpath -w "$(dirname "$dll")")" >> "$GITHUB_ENV"
