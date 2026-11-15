@@ -2,6 +2,8 @@
 
 ## 0.5.4
 
+Made for SymphonyRecomp v1.2.0p. v1.1.2p still works.
+
 - The Server box takes `/connect address` as a room's page gives it, and an address it can't read shows an error instead of staying on "Connecting..."
 - If part of the mod fails during play, the rest keeps running and the error goes in the log
 - The log has a Copy button
