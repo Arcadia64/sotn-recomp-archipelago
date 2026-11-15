@@ -4,7 +4,6 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using RecompOne.Runtime.Host.Window;
 
 namespace SotnArchipelago;
 
@@ -45,7 +44,9 @@ sealed class ModSettings
             var has = (Func<string, bool>)Delegate.CreateDelegate(typeof(Func<string, bool>), settings.GetMethod("Has")!);
             TakeOverInterfaceFile(has);
 
-            var apply = Recomp.GetType("RecompOne.Runtime.Host.Window.InterfaceLayout")!.GetMethod("ApplyPanels")!;
+            // Next to PanelManager: RecompOne.Runtime.Host.Window up to v1.1, RecompOne.UI (its own dll) from v1.2.
+            var panels = typeof(PanelManager);
+            var apply = panels.Assembly.GetType(panels.Namespace + ".InterfaceLayout")!.GetMethod("ApplyPanels")!;
             _panelOpen = (panel, fallback) =>
             {
                 panel.IsOpen = fallback;

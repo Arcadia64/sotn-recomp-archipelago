@@ -2,8 +2,6 @@
 using System;
 using System.Linq;
 using System.Numerics;
-using ImGuiNET;
-using RecompOne.Runtime.Host.Window;
 
 namespace SotnArchipelago;
 

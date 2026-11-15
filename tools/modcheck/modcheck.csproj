@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Compile-only check of mod/, with the same settings as the game's mod compiler (no implicit
-       usings), against the game built in ref/SymphonyRecomp. Usage: dotnet build tools/modcheck -->
+       usings), against the game built in ref/SymphonyRecomp, or a release download with
+       -p:GameBin=<folder with sotn.dll>. Usage: dotnet build tools/modcheck -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
@@ -17,5 +18,8 @@
     <Reference Include="$(GameBin)/RecompOne.Runtime.dll" />
     <Reference Include="$(GameBin)/ImGui.NET.dll" Condition="Exists('$(GameBin)/ImGui.NET.dll')" />
     <Reference Include="$(GameBin)/Twizzle.ImGui-Bundle.NET.dll" Condition="Exists('$(GameBin)/Twizzle.ImGui-Bundle.NET.dll')" />
+    <Reference Include="$(GameBin)/RecompOne.UI.dll" Condition="Exists('$(GameBin)/RecompOne.UI.dll')" />
+    <Reference Include="$(GameBin)/Hexa.NET.ImGui.dll" Condition="Exists('$(GameBin)/Hexa.NET.ImGui.dll')" />
+    <Reference Include="$(GameBin)/HexaGen.Runtime.dll" Condition="Exists('$(GameBin)/HexaGen.Runtime.dll')" />
   </ItemGroup>
 </Project>

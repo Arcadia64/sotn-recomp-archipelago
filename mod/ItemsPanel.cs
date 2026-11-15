@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using ImGuiNET;
-using RecompOne.Runtime.Host.Window;
 using RecompOne.Runtime.Memory;
 using Sotn;
 
@@ -139,7 +137,7 @@ public sealed class ItemsPanel : IPanel
         uint texture = Icons.Get(name);
         float pad = size * 0.1f;
         if (texture != 0)
-            draw.AddImage((nint)texture, iconAt + new Vector2(pad, pad), iconAt + new Vector2(size - pad, size - pad),
+            draw.AddImage(Gui.Tex(texture), iconAt + new Vector2(pad, pad), iconAt + new Vector2(size - pad, size - pad),
                 Vector2.Zero, Vector2.One, owned ? Lit : Dim);
         else
         {

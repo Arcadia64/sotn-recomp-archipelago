@@ -1,6 +1,5 @@
 #nullable enable
 using System.Numerics;
-using ImGuiNET;
 
 namespace SotnArchipelago;
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using RecompOne.Runtime.Events;
-using RecompOne.Runtime.Host.Window;
 using RecompOne.Runtime.Modding;
 
 namespace SotnArchipelago;
@@ -33,7 +32,8 @@ public sealed class ArchipelagoMod : IMod
     readonly KeyboardFixes _keyboard = new();
     readonly LayoutKeeper _layout;
 
-    public ArchipelagoMod() => _layout = new LayoutKeeper(() => Array.Exists(Windows, w => w.IsOpen));
+    public ArchipelagoMod() =>
+        _layout = new LayoutKeeper(() => Array.Exists(Windows, w => w.IsOpen), _map.Name, _items.Name, _messages.Name);
 
     IPanel[] Windows => [_panel, _map, _items, _messages];
 
@@ -44,7 +44,7 @@ public sealed class ArchipelagoMod : IMod
         PanelManager.Register(_layout); // before the windows: it puts their docked layout back first
         foreach (var window in Windows)
         {
-            RestoreOpen(window, defaultOpen: window == _panel);
+            RestoreOpen(window);
             PanelManager.Register(window);
         }
         PanelManager.Register(_keyboard);
@@ -98,10 +98,10 @@ public sealed class ArchipelagoMod : IMod
     static void Toggle(MenuBuilder menu, string key, IPanel panel) => menu.Check(key, () => panel.IsOpen, open => panel.IsOpen = open);
 
     // Open again if it was open last time (the recomp restores its own windows before mods load). The first
-    // time, only the Connection window is open; it has buttons for the others.
-    static void RestoreOpen(IPanel panel, bool defaultOpen)
+    // time they're all open: the Connection window floating, the others docked (LayoutKeeper).
+    static void RestoreOpen(IPanel panel)
     {
-        panel.IsOpen = ModSettings.View.PanelOpen(panel, defaultOpen);
+        panel.IsOpen = ModSettings.View.PanelOpen(panel, true);
     }
 
     static void RemovePanel(IPanel panel)

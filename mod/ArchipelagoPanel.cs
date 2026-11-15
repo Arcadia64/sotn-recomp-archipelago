@@ -1,8 +1,6 @@
 #nullable enable
 using System.Linq;
 using System.Numerics;
-using ImGuiNET;
-using RecompOne.Runtime.Host.Window;
 using Sotn;
 
 namespace SotnArchipelago;

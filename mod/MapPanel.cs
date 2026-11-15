@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using ImGuiNET;
-using RecompOne.Runtime.Host.Window;
 using RecompOne.Runtime.Memory;
 using Sotn;
 
@@ -211,12 +209,12 @@ public sealed class MapPanel : IPanel
         uint texture = inverted ? _invertedTexture : _castleTexture;
         if (texture != 0)
         {
-            if (_showUnexplored) draw.AddImage((nint)texture, origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
+            if (_showUnexplored) draw.AddImage(Gui.Tex(texture), origin, origin + size, Vector2.Zero, Vector2.One, UnexploredWalls);
             foreach (var (x, y) in explored)
             {
                 var uv0 = new Vector2(x * CellPixels / ImageWidth, ((y - shift) * CellPixels - TopCut) / ImageHeight);
                 var uv1 = uv0 + new Vector2(CellPixels / ImageWidth, CellPixels / ImageHeight);
-                draw.AddImage((nint)texture, Corner(x, y), Corner(x, y) + new Vector2(cell, cell), uv0, uv1, walls);
+                draw.AddImage(Gui.Tex(texture), Corner(x, y), Corner(x, y) + new Vector2(cell, cell), uv0, uv1, walls);
             }
         }
         else draw.AddText(origin + new Vector2(8, 8), 0xFFFFFFFF, "(the recomp's castle map image couldn't be loaded)");

@@ -6,6 +6,9 @@
 - If part of the mod fails during play, the rest keeps running and the error goes in the log
 - The log has a Copy button
 - Fixed the `Weapon 1H` and `Weapon 2H` item groups: 17 weapons were in the wrong one
+- Fixed the mod not loading on SymphonyRecomp v1.2
+- Windows you had docked stay docked after updating SymphonyRecomp to v1.2
+- With no layout saved yet, the map, items and text client start docked on the right of the game picture, and the Connection window floats
 
 ## 0.5.3
 
